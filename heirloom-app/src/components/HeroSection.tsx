@@ -1,0 +1,82 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useWallet } from "@/contexts/WalletContext";
+import { useNavigate } from "react-router-dom";
+import WalletConnectDialog from "@/components/WalletConnectDialog";
+import heroVault from "@/assets/hero-vault.png";
+
+const HeroSection = () => {
+  const { isConnected } = useWallet();
+  const navigate = useNavigate();
+  const [walletDialogOpen, setWalletDialogOpen] = useState(false);
+
+  const handleLaunch = () => {
+    if (isConnected) {
+      navigate("/create-vault");
+    } else {
+      setWalletDialogOpen(true);
+    }
+  };
+
+  return (
+    <>
+      <section className="relative overflow-hidden py-16 px-6 md:py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8 flex justify-start">
+            <span className="neo-badge bg-accent-lime rotate-[-2deg]">
+              Bitcoin Inheritance Protocol
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight mb-6">
+                If your Bitcoin goes{" "}
+                <span className="bg-accent-pink px-3 inline-block rotate-[-1deg]">
+                  silent,
+                </span>{" "}
+                your plan{" "}
+                <span className="bg-accent-lime px-3 inline-block rotate-[1deg]">
+                  speaks.
+                </span>
+              </h1>
+              <p className="text-xl md:text-2xl font-medium leading-relaxed mb-10 max-w-xl">
+                Lock sBTC & USDCx into a heartbeat vault on Stacks.
+                Check in periodically — or your heirs inherit automatically.
+                No lawyers. No custodians. No seed phrase sharing.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Button variant="lime" size="xl" onClick={handleLaunch}>
+                  {isConnected ? "Create Vault" : "Launch App"}
+                </Button>
+                <Button variant="outline" size="xl">
+                  Read Docs
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative flex justify-center lg:justify-end">
+              <div className="neo-card-static rotate-[2deg] max-w-md w-full">
+                <img
+                  src={heroVault}
+                  alt="Heirloom Bitcoin Vault with heartbeat pulse"
+                  className="w-full h-auto"
+                />
+              </div>
+              <div className="absolute -top-4 -right-2 neo-badge bg-accent-yellow rotate-[12deg] animate-float text-xs">
+                ₿ Secured
+              </div>
+              <div className="absolute -bottom-4 left-4 neo-badge bg-accent-cyan rotate-[-6deg] text-xs">
+                On Stacks
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <WalletConnectDialog open={walletDialogOpen} onOpenChange={setWalletDialogOpen} />
+    </>
+  );
+};
+
+export default HeroSection;
