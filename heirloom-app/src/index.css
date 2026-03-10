@@ -1,68 +1,130 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent-pink: 313 100% 65%;
+    --accent-lime: 72 100% 50%;
+    --accent-cyan: 189 100% 50%;
+    --accent-orange: 29 100% 50%;
+    --accent-purple: 249 100% 69%;
+    --accent-yellow: 50 100% 50%;
+    --accent-red: 0 100% 61%;
+
+    --accent: 72 100% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 100% 61%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 0%;
+
+    --radius: 0.75rem;
+
+    --shadow-sm: 4px 4px 0px 0px hsl(0 0% 0%);
+    --shadow-md: 8px 8px 0px 0px hsl(0 0% 0%);
+    --shadow-lg: 12px 12px 0px 0px hsl(0 0% 0%);
+    --shadow-xl: 16px 16px 0px 0px hsl(0 0% 0%);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 0%;
+    --sidebar-primary: 0 0% 0%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 72 100% 50%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 0%;
+    --sidebar-ring: 0 0% 0%;
   }
-  a:hover {
-    color: #747bff;
+}
+
+@layer base {
+  * {
+    @apply border-border;
   }
-  button {
-    background-color: #f9f9f9;
+
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .neo-shadow-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  .neo-shadow-md {
+    box-shadow: var(--shadow-md);
+  }
+  .neo-shadow-lg {
+    box-shadow: var(--shadow-lg);
+  }
+  .neo-shadow-xl {
+    box-shadow: var(--shadow-xl);
+  }
+  .neo-border {
+    @apply border-4 border-foreground;
+  }
+  .neo-border-thick {
+    @apply border-[6px] border-foreground;
+  }
+  .neo-card {
+    @apply bg-card neo-border rounded-2xl p-8;
+    box-shadow: var(--shadow-lg);
+  }
+  .neo-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-xl);
+  }
+  .neo-card-static {
+    @apply bg-card neo-border rounded-2xl p-8;
+    box-shadow: var(--shadow-lg);
+  }
+  .neo-badge {
+    @apply inline-block neo-border rounded-full px-4 py-1 text-sm font-bold uppercase tracking-widest;
+    box-shadow: var(--shadow-sm);
+  }
+  .neo-section-pink {
+    background-color: hsl(var(--accent-pink));
+  }
+  .neo-section-lime {
+    background-color: hsl(var(--accent-lime));
+  }
+  .neo-section-cyan {
+    background-color: hsl(var(--accent-cyan));
+  }
+  .neo-section-orange {
+    background-color: hsl(var(--accent-orange));
+  }
+  .neo-section-yellow {
+    background-color: hsl(var(--accent-yellow));
+  }
+  .neo-section-purple {
+    background-color: hsl(var(--accent-purple));
   }
 }
