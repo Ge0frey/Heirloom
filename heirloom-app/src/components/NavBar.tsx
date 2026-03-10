@@ -24,7 +24,7 @@ const NavBar = () => {
       <nav className="border-b-8 border-foreground bg-background sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
           <a href="/" className="text-2xl md:text-3xl font-black tracking-tight">
-            ⚡ Heirloom
+            Heirloom
           </a>
 
           <div className="hidden md:flex items-center gap-8">
