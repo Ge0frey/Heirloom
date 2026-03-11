@@ -3,7 +3,7 @@ import { Shield, Clock, Bitcoin, Lock, FileCode, Layers } from "lucide-react";
 const reasons = [
   {
     icon: Clock,
-    title: "block-time (Clarity 4)",
+    title: "stacks-block-time (Clarity 4)",
     description: "Accurate on-chain timestamps for heartbeat intervals and expiry calculations.",
     badge: "NEW",
     badgeColor: "bg-accent-lime",
@@ -24,9 +24,9 @@ const reasons = [
   },
   {
     icon: Layers,
-    title: "USDCx (SIP-010)",
-    description: "Stable-value bequests. Not every heir wants volatile BTC.",
-    badge: "STABLE",
+    title: "SIP-010 Tokens",
+    description: "Standard fungible token interface for composable, programmable inheritance.",
+    badge: "SIP-010",
     badgeColor: "bg-accent-pink",
   },
   {
