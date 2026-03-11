@@ -8,6 +8,7 @@ import { VaultProvider } from "@/contexts/VaultContext";
 import Index from "./pages/Index";
 import CreateVault from "./pages/CreateVault";
 import Dashboard from "./pages/Dashboard";
+import Claim from "./pages/Claim";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/create-vault" element={<CreateVault />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/claim" element={<Claim />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
