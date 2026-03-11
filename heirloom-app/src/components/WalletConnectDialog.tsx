@@ -16,13 +16,13 @@ interface WalletConnectDialogProps {
 
 const wallets = [
   {
-    id: "leather" as const,
+    id: "leather",
     name: "Leather",
     description: "The original Stacks wallet",
     color: "bg-accent-orange",
   },
   {
-    id: "xverse" as const,
+    id: "xverse",
     name: "Xverse",
     description: "Bitcoin & Stacks wallet",
     color: "bg-accent-purple",
@@ -30,19 +30,23 @@ const wallets = [
 ];
 
 const WalletConnectDialog = ({ open, onOpenChange }: WalletConnectDialogProps) => {
-  const { connect, isConnected } = useWallet();
-  const [connecting, setConnecting] = useState<string | null>(null);
+  const { connectWallet } = useWallet();
+  const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
 
-  const handleConnect = async (type: "leather" | "xverse") => {
-    setConnecting(type);
-    await connect(type);
-    setConnected(true);
-    setTimeout(() => {
-      onOpenChange(false);
-      setConnecting(null);
-      setConnected(false);
-    }, 1000);
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      await connectWallet();
+      setConnected(true);
+      setTimeout(() => {
+        onOpenChange(false);
+        setConnecting(false);
+        setConnected(false);
+      }, 1000);
+    } catch {
+      setConnecting(false);
+    }
   };
 
   return (
@@ -71,14 +75,14 @@ const WalletConnectDialog = ({ open, onOpenChange }: WalletConnectDialogProps) =
             wallets.map((w) => (
               <button
                 key={w.id}
-                onClick={() => handleConnect(w.id)}
-                disabled={connecting !== null}
+                onClick={handleConnect}
+                disabled={connecting}
                 className={`w-full neo-border rounded-xl p-5 flex items-center gap-4 transition-all duration-150 neo-shadow-md hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[12px_12px_0px_0px_hsl(var(--foreground))] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none ${
-                  connecting === w.id ? w.color : "bg-card"
+                  connecting ? w.color : "bg-card"
                 } disabled:opacity-60`}
               >
                 <div className={`${w.color} neo-border rounded-xl p-3 shrink-0`}>
-                  {connecting === w.id ? (
+                  {connecting ? (
                     <Loader2 className="h-7 w-7 animate-spin" strokeWidth={2.5} />
                   ) : (
                     <Wallet className="h-7 w-7" strokeWidth={2.5} />
@@ -87,7 +91,7 @@ const WalletConnectDialog = ({ open, onOpenChange }: WalletConnectDialogProps) =
                 <div className="text-left">
                   <p className="text-xl font-black">{w.name}</p>
                   <p className="text-sm font-medium text-muted-foreground">
-                    {connecting === w.id ? "Connecting..." : w.description}
+                    {connecting ? "Connecting..." : w.description}
                   </p>
                 </div>
               </button>
@@ -95,7 +99,7 @@ const WalletConnectDialog = ({ open, onOpenChange }: WalletConnectDialogProps) =
           )}
 
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-center pt-2">
-            wallet connection
+            wallet selection happens in the wallet popup
           </p>
         </div>
       </DialogContent>
