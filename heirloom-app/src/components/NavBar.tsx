@@ -8,7 +8,7 @@ import WalletConnectDialog from "@/components/WalletConnectDialog";
 const NavBar = () => {
   const [open, setOpen] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
-  const { isConnected, address, disconnect } = useWallet();
+  const { isConnected, stxAddress, disconnectWallet } = useWallet();
   const navigate = useNavigate();
 
   const handleLaunch = () => {
@@ -40,12 +40,12 @@ const NavBar = () => {
             {isConnected ? (
               <div className="flex items-center gap-3">
                 <span className="neo-badge bg-accent-lime text-xs">
-                  {address?.slice(0, 6)}...{address?.slice(-4)}
+                  {stxAddress?.slice(0, 6)}...{stxAddress?.slice(-4)}
                 </span>
                 <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
                   Dashboard
                 </Button>
-                <Button variant="ghost" size="sm" onClick={disconnect}>
+                <Button variant="ghost" size="sm" onClick={disconnectWallet}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
