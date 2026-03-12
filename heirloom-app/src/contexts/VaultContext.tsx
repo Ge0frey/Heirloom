@@ -1,51 +1,209 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import { useWallet } from "./WalletContext";
+import {
+  getVaultStatus,
+  getHeirList,
+  getHeirInfo,
+  createVault as createVaultContract,
+  depositSbtc as depositSbtcContract,
+  sendHeartbeat as sendHeartbeatContract,
+  emergencyWithdraw as emergencyWithdrawContract,
+} from "@/lib/contracts";
 
 export interface Heir {
   address: string;
   label: string;
-  splitBps: number; // basis points, 10000 = 100%
+  splitBps: number;
+  hasClaimed?: boolean;
 }
 
 export interface VaultData {
-  heartbeatInterval: number; // days
-  gracePeriod: number; // days
-  heirs: Heir[];
+  state: "active" | "grace" | "claimable" | "distributed";
+  sbtcBalance: number; // in sats
+  lastHeartbeat: number; // unix timestamp seconds
+  heartbeatInterval: number; // seconds
+  gracePeriod: number; // seconds
+  elapsedSeconds: number;
+  secondsUntilGrace: number;
+  secondsUntilClaimable: number;
+  heirCount: number;
   guardian: string | null;
-  sbtcDeposit: number;
-  usdcxDeposit: number;
-  createdAt: Date;
-  lastHeartbeat: Date;
-  status: "active" | "grace" | "claimable" | "distributed";
+  guardianPauseUsed: boolean;
+  isDistributed: boolean;
+  createdAt: number;
+  heirs: Heir[];
 }
 
 interface VaultState {
   vault: VaultData | null;
-  createVault: (data: VaultData) => void;
-  sendHeartbeat: () => void;
+  loading: boolean;
+  error: string | null;
+  pendingTxId: string | null;
+  fetchVault: () => Promise<void>;
+  createVaultOnChain: (
+    heartbeatInterval: number,
+    gracePeriod: number,
+    heirs: { address: string; label: string; splitBps: number }[],
+    guardian?: string
+  ) => Promise<string>;
+  depositSbtcOnChain: (amount: number) => Promise<string>;
+  sendHeartbeatOnChain: () => Promise<string>;
+  emergencyWithdrawOnChain: () => Promise<string>;
   clearVault: () => void;
 }
 
 const VaultContext = createContext<VaultState | null>(null);
 
-export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [vault, setVault] = useState<VaultData | null>(null);
+function parseVaultStatus(json: any): Omit<VaultData, "heirs"> | null {
+  if (!json?.value) return null;
+  const v = json.value;
+  return {
+    state: v.state?.value || "active",
+    sbtcBalance: parseInt(v["sbtc-balance"]?.value || "0"),
+    lastHeartbeat: parseInt(v["last-heartbeat"]?.value || "0"),
+    heartbeatInterval: parseInt(v["heartbeat-interval"]?.value || "0"),
+    gracePeriod: parseInt(v["grace-period"]?.value || "0"),
+    elapsedSeconds: parseInt(v["elapsed-seconds"]?.value || "0"),
+    secondsUntilGrace: parseInt(v["seconds-until-grace"]?.value || "0"),
+    secondsUntilClaimable: parseInt(v["seconds-until-claimable"]?.value || "0"),
+    heirCount: parseInt(v["heir-count"]?.value || "0"),
+    guardian: v.guardian?.value?.value || null,
+    guardianPauseUsed: v["guardian-pause-used"]?.value === true,
+    isDistributed: v["is-distributed"]?.value === true,
+    createdAt: parseInt(v["created-at"]?.value || "0"),
+  };
+}
 
-  const createVault = useCallback((data: VaultData) => {
-    setVault(data);
+export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { stxAddress, isConnected } = useWallet();
+  const [vault, setVault] = useState<VaultData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingTxId, setPendingTxId] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchVault = useCallback(async () => {
+    if (!stxAddress) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const statusJson = await getVaultStatus(stxAddress);
+      const parsed = parseVaultStatus(statusJson);
+      if (!parsed) {
+        setVault(null);
+        return;
+      }
+
+      // Fetch heir list
+      const heirListJson = await getHeirList(stxAddress);
+      const heirAddresses: string[] =
+        heirListJson?.value?.map((h: any) => h.value) || [];
+
+      // Fetch individual heir info
+      const heirs: Heir[] = await Promise.all(
+        heirAddresses.map(async (addr, i) => {
+          try {
+            const info = await getHeirInfo(stxAddress, addr);
+            return {
+              address: addr,
+              label: `Heir ${i + 1}`,
+              splitBps: parseInt(info?.value?.["split-bps"]?.value || "0"),
+              hasClaimed: info?.value?.["has-claimed"]?.value === true,
+            };
+          } catch {
+            return { address: addr, label: `Heir ${i + 1}`, splitBps: 0 };
+          }
+        })
+      );
+
+      setVault({ ...parsed, heirs });
+    } catch (err: any) {
+      // Vault not found is not an error
+      if (err?.message?.includes("u103")) {
+        setVault(null);
+      } else {
+        setError(err?.message || "Failed to fetch vault");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [stxAddress]);
+
+  // Auto-poll every 15 seconds when connected
+  useEffect(() => {
+    if (isConnected && stxAddress) {
+      fetchVault();
+      pollRef.current = setInterval(fetchVault, 15000);
+    } else {
+      setVault(null);
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [isConnected, stxAddress, fetchVault]);
+
+  const createVaultOnChain = useCallback(
+    async (
+      heartbeatInterval: number,
+      gracePeriod: number,
+      heirs: { address: string; label: string; splitBps: number }[],
+      guardian?: string
+    ): Promise<string> => {
+      const result = await createVaultContract(
+        heartbeatInterval,
+        gracePeriod,
+        heirs.map((h) => ({ address: h.address, splitBps: h.splitBps })),
+        guardian
+      );
+      const txId = result?.txid || result?.txId || "";
+      setPendingTxId(txId);
+      return txId;
+    },
+    []
+  );
+
+  const depositSbtcOnChain = useCallback(async (amount: number): Promise<string> => {
+    const result = await depositSbtcContract(amount);
+    const txId = result?.txid || result?.txId || "";
+    setPendingTxId(txId);
+    return txId;
   }, []);
 
-  const sendHeartbeat = useCallback(() => {
-    setVault((prev) =>
-      prev ? { ...prev, lastHeartbeat: new Date(), status: "active" } : null
-    );
+  const sendHeartbeatOnChain = useCallback(async (): Promise<string> => {
+    const result = await sendHeartbeatContract();
+    const txId = result?.txid || result?.txId || "";
+    setPendingTxId(txId);
+    return txId;
+  }, []);
+
+  const emergencyWithdrawOnChain = useCallback(async (): Promise<string> => {
+    const result = await emergencyWithdrawContract();
+    const txId = result?.txid || result?.txId || "";
+    setPendingTxId(txId);
+    return txId;
   }, []);
 
   const clearVault = useCallback(() => {
     setVault(null);
+    setPendingTxId(null);
+    setError(null);
   }, []);
 
   return (
-    <VaultContext.Provider value={{ vault, createVault, sendHeartbeat, clearVault }}>
+    <VaultContext.Provider
+      value={{
+        vault,
+        loading,
+        error,
+        pendingTxId,
+        fetchVault,
+        createVaultOnChain,
+        depositSbtcOnChain,
+        sendHeartbeatOnChain,
+        emergencyWithdrawOnChain,
+        clearVault,
+      }}
+    >
       {children}
     </VaultContext.Provider>
   );
