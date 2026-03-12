@@ -11,6 +11,7 @@ import {
   Users,
   Shield,
   Bitcoin,
+  DollarSign,
   LogOut,
   AlertTriangle,
   ArrowLeft,
@@ -27,7 +28,7 @@ const statusColors: Record<string, string> = {
 
 const DashboardPage = () => {
   const { stxAddress, disconnectWallet } = useWallet();
-  const { vault, loading, pendingTxId, sendHeartbeatOnChain, emergencyWithdrawOnChain, clearVault, fetchVault } = useVault();
+  const { vault, loading, pendingTxId, pendingCreate, sendHeartbeatOnChain, emergencyWithdrawOnChain, clearVault, fetchVault } = useVault();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [sendingHeartbeat, setSendingHeartbeat] = useState(false);
@@ -71,7 +72,6 @@ const DashboardPage = () => {
       const txId = await sendHeartbeatOnChain();
       setLastTxId(txId);
       toast({ title: "Heartbeat Sent!", description: "Your vault timer has been reset." });
-      // Re-fetch after a delay to let the tx confirm
       setTimeout(fetchVault, 5000);
     } catch (err: any) {
       toast({ title: "Heartbeat Failed", description: err?.message || "Transaction rejected", variant: "destructive" });
@@ -81,7 +81,7 @@ const DashboardPage = () => {
   };
 
   const handleEmergencyWithdraw = async () => {
-    if (!confirm("Are you sure? This will return all sBTC and cancel the vault permanently.")) return;
+    if (!confirm("Are you sure? This will return all assets and cancel the vault permanently.")) return;
     setWithdrawing(true);
     try {
       const txId = await emergencyWithdrawOnChain();
@@ -101,13 +101,37 @@ const DashboardPage = () => {
     navigate("/");
   };
 
-  if (loading && !vault) {
+  if (loading && !vault && !pendingCreate) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="neo-card-static text-center max-w-md">
           <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" strokeWidth={2.5} />
           <h2 className="text-2xl font-black mb-3">Loading Vault...</h2>
           <p className="text-muted-foreground font-medium">Fetching on-chain data</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!vault && pendingCreate) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="neo-card-static text-center max-w-md">
+          <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" strokeWidth={2.5} />
+          <h2 className="text-2xl font-black mb-3">Vault Creation Pending</h2>
+          <p className="text-muted-foreground font-medium mb-6">
+            Waiting for your transaction to confirm on-chain. This may take a minute...
+          </p>
+          {pendingTxId && (
+            <a
+              href={explorerTxUrl(pendingTxId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 neo-badge bg-accent-cyan hover:bg-accent-cyan/80 transition-colors"
+            >
+              View on Explorer <ExternalLink className="h-4 w-4" />
+            </a>
+          )}
         </div>
       </div>
     );
@@ -129,6 +153,7 @@ const DashboardPage = () => {
   }
 
   const sbtcDisplay = (vault.sbtcBalance / 1e8).toFixed(8);
+  const usdcxDisplay = (vault.usdcxBalance / 1e6).toFixed(2);
   const countdownLabel = vault.state === "active" ? "Next Heartbeat Due In" : vault.state === "grace" ? "Time Until Claimable" : vault.state === "claimable" ? "Vault Is Claimable" : "Vault Distributed";
 
   return (
@@ -223,7 +248,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="neo-card-static">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-accent-orange neo-border rounded-xl p-3">
@@ -233,6 +258,17 @@ const DashboardPage = () => {
             </div>
             <p className="text-4xl font-black">{sbtcDisplay}</p>
             <p className="text-sm font-bold text-muted-foreground">{vault.sbtcBalance} sats</p>
+          </div>
+
+          <div className="neo-card-static">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-accent-cyan neo-border rounded-xl p-3">
+                <DollarSign className="h-6 w-6" strokeWidth={2.5} />
+              </div>
+              <h3 className="font-black">USDCx Locked</h3>
+            </div>
+            <p className="text-4xl font-black">${usdcxDisplay}</p>
+            <p className="text-sm font-bold text-muted-foreground">{vault.usdcxBalance} micro-units</p>
           </div>
 
           <div className="neo-card-static">
@@ -281,6 +317,11 @@ const DashboardPage = () => {
                   <p className="text-xs font-bold text-muted-foreground">
                     {((vault.sbtcBalance / 1e8) * h.splitBps / 10000).toFixed(8)} sBTC
                   </p>
+                  {vault.usdcxBalance > 0 && (
+                    <p className="text-xs font-bold text-muted-foreground">
+                      ${((vault.usdcxBalance / 1e6) * h.splitBps / 10000).toFixed(2)} USDCx
+                    </p>
+                  )}
                   {h.hasClaimed && (
                     <span className="neo-badge bg-accent-lime text-xs mt-1 inline-block">Claimed</span>
                   )}
@@ -310,7 +351,7 @@ const DashboardPage = () => {
               <div>
                 <h3 className="font-black text-lg">Emergency Withdraw</h3>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Reclaim all sBTC and cancel the vault permanently.
+                  Reclaim all assets and cancel the vault permanently.
                 </p>
               </div>
               <Button
