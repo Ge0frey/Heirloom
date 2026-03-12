@@ -63,12 +63,25 @@ plan:
   - id: 0
     transactions:
     - transaction-type: emulated-contract-publish
-      contract-name: sbtc-token
+      contract-name: sip-010-trait-ft-standard
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-      path: contracts/sbtc-token.clar
-      clarity-version: 4
+      path: .cache/requirements/ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.sip-010-trait-ft-standard.clar
+      clarity-version: 3
+    epoch: '3.1'
+  - id: 1
+    transactions:
     - transaction-type: emulated-contract-publish
-      contract-name: heirloom-vault
+      contract-name: test-sbtc-faucet
+      emulated-sender: ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T
+      path: .cache/requirements/ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: usdcx
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: .cache/requirements/ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: heirloom-vault-v2
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/heirloom-vault.clar
       clarity-version: 4

@@ -7,17 +7,37 @@ plan:
   batches:
   - id: 0
     transactions:
+    - transaction-type: requirement-publish
+      contract-id: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.sip-010-trait-ft-standard
+      remap-sender: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
+      remap-principals:
+        ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
+      cost: 8400
+      path: .cache/requirements/ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.sip-010-trait-ft-standard.clar
+      clarity-version: 3
+    epoch: '3.1'
+  - id: 1
+    transactions:
+    - transaction-type: requirement-publish
+      contract-id: ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet
+      remap-sender: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
+      remap-principals:
+        ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
+      cost: 26360
+      path: .cache/requirements/ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet.clar
+      clarity-version: 3
+    - transaction-type: requirement-publish
+      contract-id: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx
+      remap-sender: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
+      remap-principals:
+        ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
+      cost: 79150
+      path: .cache/requirements/ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx.clar
+      clarity-version: 3
     - transaction-type: contract-publish
-      contract-name: sbtc-token
+      contract-name: heirloom-vault-v2
       expected-sender: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
-      cost: 9820
-      path: contracts/sbtc-token.clar
-      anchor-block-only: true
-      clarity-version: 4
-    - transaction-type: contract-publish
-      contract-name: heirloom-vault
-      expected-sender: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
-      cost: 117660
+      cost: 128720
       path: contracts/heirloom-vault.clar
       anchor-block-only: true
       clarity-version: 4
