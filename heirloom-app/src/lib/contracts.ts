@@ -43,6 +43,15 @@ export async function depositSbtc(amount: number) {
   });
 }
 
+export async function depositUsdcx(amount: number) {
+  return request('stx_callContract', {
+    contract: FULL_CONTRACT_ID,
+    functionName: 'deposit-usdcx',
+    functionArgs: [Cl.uint(amount)],
+    network: NETWORK as 'testnet' | 'mainnet',
+  });
+}
+
 export async function sendHeartbeat() {
   return request('stx_callContract', {
     contract: FULL_CONTRACT_ID,
