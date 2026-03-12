@@ -9,7 +9,7 @@ const wallet3 = accounts.get("wallet_3")!; // guardian
 
 function createDefaultVault(sender = deployer) {
   return simnet.callPublicFn(
-    "heirloom-vault",
+    "heirloom-vault-v2",
     "create-vault",
     [
       Cl.uint(120), // 2 min interval
@@ -30,15 +30,6 @@ function createDefaultVault(sender = deployer) {
   );
 }
 
-function mintSbtc(recipient: string, amount: number) {
-  return simnet.callPublicFn(
-    "sbtc-token",
-    "mint",
-    [Cl.uint(amount), Cl.principal(recipient)],
-    deployer
-  );
-}
-
 describe("Heirloom Vault", () => {
   describe("create-vault", () => {
     it("creates a vault with valid heirs", () => {
@@ -48,7 +39,7 @@ describe("Heirloom Vault", () => {
 
     it("rejects splits that don't sum to 10000", () => {
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "create-vault",
         [
           Cl.uint(120),
@@ -78,7 +69,7 @@ describe("Heirloom Vault", () => {
 
     it("creates vault with guardian", () => {
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "create-vault",
         [
           Cl.uint(120),
@@ -103,7 +94,7 @@ describe("Heirloom Vault", () => {
       simnet.mineEmptyBlocks(10);
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "heartbeat",
         [],
         deployer
@@ -115,7 +106,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "heartbeat",
         [],
         wallet1
@@ -129,7 +120,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "get-vault-status",
         [Cl.principal(deployer)],
         deployer
@@ -141,6 +132,8 @@ describe("Heirloom Vault", () => {
       expect(okValue.type).toBe(ClarityType.Tuple);
       // Check state field exists in the tuple
       expect(okValue.value.state).toBeDefined();
+      // Check usdcx-balance field exists
+      expect(okValue.value["usdcx-balance"]).toBeDefined();
     });
   });
 
@@ -149,8 +142,22 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "deposit-sbtc",
+        [Cl.uint(0)],
+        deployer
+      );
+      expect(result.result).toBeErr(Cl.uint(113)); // ERR-NO-BALANCE
+    });
+  });
+
+  describe("deposit-usdcx", () => {
+    it("rejects zero amount", () => {
+      createDefaultVault();
+
+      const result = simnet.callPublicFn(
+        "heirloom-vault-v2",
+        "deposit-usdcx",
         [Cl.uint(0)],
         deployer
       );
@@ -163,7 +170,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "emergency-withdraw",
         [],
         deployer
@@ -174,14 +181,14 @@ describe("Heirloom Vault", () => {
     it("rejects withdraw on distributed vault", () => {
       createDefaultVault();
       simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "emergency-withdraw",
         [],
         deployer
       );
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "emergency-withdraw",
         [],
         deployer
@@ -195,7 +202,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "update-heirs",
         [
           Cl.list([
@@ -218,7 +225,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "update-heirs",
         [
           Cl.list([
@@ -239,7 +246,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "get-heir-info",
         [Cl.principal(deployer), Cl.principal(wallet1)],
         deployer
@@ -255,7 +262,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "get-heir-info",
         [Cl.principal(deployer), Cl.principal(wallet3)],
         deployer
@@ -269,7 +276,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "get-heir-list",
         [Cl.principal(deployer)],
         deployer
@@ -286,14 +293,14 @@ describe("Heirloom Vault", () => {
     it("rejects heartbeat after emergency withdraw", () => {
       createDefaultVault();
       simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "emergency-withdraw",
         [],
         deployer
       );
 
       const result = simnet.callPublicFn(
-        "heirloom-vault",
+        "heirloom-vault-v2",
         "heartbeat",
         [],
         deployer
