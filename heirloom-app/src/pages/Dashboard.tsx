@@ -3,60 +3,115 @@ import { Button } from "@/components/ui/button";
 import { useWallet } from "@/contexts/WalletContext";
 import { useVault } from "@/contexts/VaultContext";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { explorerTxUrl } from "@/config/constants";
 import {
   Heart,
   Clock,
   Users,
   Shield,
   Bitcoin,
-  DollarSign,
   LogOut,
   AlertTriangle,
   ArrowLeft,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 
+const statusColors: Record<string, string> = {
+  active: "neo-section-lime",
+  grace: "bg-accent-yellow",
+  claimable: "bg-accent-red",
+  distributed: "bg-secondary",
+};
+
 const DashboardPage = () => {
-  const { address, disconnect, sbtcBalance, usdcxBalance } = useWallet();
-  const { vault, sendHeartbeat, clearVault } = useVault();
+  const { stxAddress, disconnectWallet } = useWallet();
+  const { vault, loading, pendingTxId, sendHeartbeatOnChain, emergencyWithdrawOnChain, clearVault, fetchVault } = useVault();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [sendingHeartbeat, setSendingHeartbeat] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [lastTxId, setLastTxId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+  // Local countdown timer that decrements between polls
   useEffect(() => {
     if (!vault) return;
-    const interval = setInterval(() => {
-      const now = new Date();
-      const deadline = new Date(vault.lastHeartbeat);
-      deadline.setDate(deadline.getDate() + vault.heartbeatInterval);
-      const diff = deadline.getTime() - now.getTime();
+    const targetSeconds = vault.state === "active"
+      ? vault.secondsUntilGrace
+      : vault.state === "grace"
+        ? vault.secondsUntilClaimable
+        : 0;
 
-      if (diff <= 0) {
+    let remaining = targetSeconds;
+
+    const updateCountdown = () => {
+      if (remaining <= 0) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      } else {
-        setCountdown({
-          days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-          minutes: Math.floor((diff / (1000 * 60)) % 60),
-          seconds: Math.floor((diff / 1000) % 60),
-        });
+        return;
       }
-    }, 1000);
+      setCountdown({
+        days: Math.floor(remaining / 86400),
+        hours: Math.floor((remaining % 86400) / 3600),
+        minutes: Math.floor((remaining % 3600) / 60),
+        seconds: remaining % 60,
+      });
+      remaining--;
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
   }, [vault]);
 
   const handleHeartbeat = async () => {
     setSendingHeartbeat(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    sendHeartbeat();
-    setSendingHeartbeat(false);
+    try {
+      const txId = await sendHeartbeatOnChain();
+      setLastTxId(txId);
+      toast({ title: "Heartbeat Sent!", description: "Your vault timer has been reset." });
+      // Re-fetch after a delay to let the tx confirm
+      setTimeout(fetchVault, 5000);
+    } catch (err: any) {
+      toast({ title: "Heartbeat Failed", description: err?.message || "Transaction rejected", variant: "destructive" });
+    } finally {
+      setSendingHeartbeat(false);
+    }
+  };
+
+  const handleEmergencyWithdraw = async () => {
+    if (!confirm("Are you sure? This will return all sBTC and cancel the vault permanently.")) return;
+    setWithdrawing(true);
+    try {
+      const txId = await emergencyWithdrawOnChain();
+      setLastTxId(txId);
+      toast({ title: "Emergency Withdraw", description: "Assets returned to your wallet." });
+      setTimeout(fetchVault, 5000);
+    } catch (err: any) {
+      toast({ title: "Withdraw Failed", description: err?.message || "Transaction rejected", variant: "destructive" });
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   const handleDisconnect = () => {
     clearVault();
-    disconnect();
+    disconnectWallet();
     navigate("/");
   };
+
+  if (loading && !vault) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="neo-card-static text-center max-w-md">
+          <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" strokeWidth={2.5} />
+          <h2 className="text-2xl font-black mb-3">Loading Vault...</h2>
+          <p className="text-muted-foreground font-medium">Fetching on-chain data</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!vault) {
     return (
@@ -73,6 +128,9 @@ const DashboardPage = () => {
     );
   }
 
+  const sbtcDisplay = (vault.sbtcBalance / 1e8).toFixed(8);
+  const countdownLabel = vault.state === "active" ? "Next Heartbeat Due In" : vault.state === "grace" ? "Time Until Claimable" : vault.state === "claimable" ? "Vault Is Claimable" : "Vault Distributed";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -82,7 +140,7 @@ const DashboardPage = () => {
             <ArrowLeft className="h-5 w-5" strokeWidth={3} />
             Home
           </button>
-          <span className="text-2xl font-black">⚡ Vault Dashboard</span>
+          <span className="text-2xl font-black">Vault Dashboard</span>
           <button
             onClick={handleDisconnect}
             className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest hover:underline"
@@ -95,35 +153,52 @@ const DashboardPage = () => {
 
       <div className="max-w-6xl mx-auto px-6 py-12 space-y-8">
         {/* Status banner */}
-        <div className="neo-section-lime neo-border-thick rounded-2xl p-8 neo-shadow-xl">
+        <div className={`${statusColors[vault.state] || "bg-secondary"} neo-border-thick rounded-2xl p-8 neo-shadow-xl`}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
               <span className="neo-badge bg-background mb-3 inline-block">Vault Status</span>
-              <h2 className="text-4xl md:text-5xl font-black uppercase">{vault.status}</h2>
+              <h2 className="text-4xl md:text-5xl font-black uppercase">{vault.state}</h2>
               <p className="text-sm font-bold text-foreground/70 mt-1 font-mono">
-                Owner: {address}
+                Owner: {stxAddress}
               </p>
             </div>
-            <Button
-              variant="default"
-              size="xl"
-              onClick={handleHeartbeat}
-              disabled={sendingHeartbeat}
-              className="shrink-0"
-            >
-              {sendingHeartbeat ? (
-                <><Loader2 className="h-5 w-5 animate-spin" /> Signing...</>
-              ) : (
-                <><Heart className="h-5 w-5" /> Send Heartbeat</>
-              )}
-            </Button>
+            {vault.state !== "distributed" && (
+              <Button
+                variant="default"
+                size="xl"
+                onClick={handleHeartbeat}
+                disabled={sendingHeartbeat}
+                className="shrink-0"
+              >
+                {sendingHeartbeat ? (
+                  <><Loader2 className="h-5 w-5 animate-spin" /> Signing...</>
+                ) : (
+                  <><Heart className="h-5 w-5" /> Send Heartbeat</>
+                )}
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Last tx link */}
+        {(lastTxId || pendingTxId) && (
+          <div className="neo-card-static bg-accent-cyan/10">
+            <a
+              href={explorerTxUrl(lastTxId || pendingTxId || "")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 font-bold hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View latest transaction on Explorer
+            </a>
+          </div>
+        )}
 
         {/* Countdown */}
         <div className="neo-card-static">
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
-            Next Heartbeat Due In
+            {countdownLabel}
           </h3>
           <div className="grid grid-cols-4 gap-4">
             {[
@@ -143,12 +218,12 @@ const DashboardPage = () => {
             ))}
           </div>
           <p className="text-sm font-bold text-muted-foreground mt-4">
-            Last heartbeat: {vault.lastHeartbeat.toLocaleString()}
+            Last heartbeat: {vault.lastHeartbeat > 0 ? new Date(vault.lastHeartbeat * 1000).toLocaleString() : "N/A"}
           </p>
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="neo-card-static">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-accent-orange neo-border rounded-xl p-3">
@@ -156,19 +231,8 @@ const DashboardPage = () => {
               </div>
               <h3 className="font-black">sBTC Locked</h3>
             </div>
-            <p className="text-4xl font-black">{vault.sbtcDeposit.toFixed(4)}</p>
-            <p className="text-sm font-bold text-muted-foreground">≈ ${(vault.sbtcDeposit * 100000).toLocaleString()}</p>
-          </div>
-
-          <div className="neo-card-static">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-accent-cyan neo-border rounded-xl p-3">
-                <DollarSign className="h-6 w-6" strokeWidth={2.5} />
-              </div>
-              <h3 className="font-black">USDCx Locked</h3>
-            </div>
-            <p className="text-4xl font-black">${vault.usdcxDeposit.toLocaleString()}</p>
-            <p className="text-sm font-bold text-muted-foreground">Stable value</p>
+            <p className="text-4xl font-black">{sbtcDisplay}</p>
+            <p className="text-sm font-bold text-muted-foreground">{vault.sbtcBalance} sats</p>
           </div>
 
           <div className="neo-card-static">
@@ -181,15 +245,15 @@ const DashboardPage = () => {
             <div className="space-y-1">
               <div className="flex justify-between">
                 <span className="text-sm font-bold">Interval</span>
-                <span className="font-black">{vault.heartbeatInterval}d</span>
+                <span className="font-black">{vault.heartbeatInterval >= 86400 ? `${Math.round(vault.heartbeatInterval / 86400)}d` : `${vault.heartbeatInterval}s`}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm font-bold">Grace</span>
-                <span className="font-black">{vault.gracePeriod}d</span>
+                <span className="font-black">{vault.gracePeriod >= 86400 ? `${Math.round(vault.gracePeriod / 86400)}d` : `${vault.gracePeriod}s`}</span>
               </div>
               <div className="flex justify-between border-t-4 border-foreground pt-1 mt-1">
                 <span className="text-sm font-bold">Total</span>
-                <span className="font-black">{vault.heartbeatInterval + vault.gracePeriod}d</span>
+                <span className="font-black">{(vault.heartbeatInterval + vault.gracePeriod) >= 86400 ? `${Math.round((vault.heartbeatInterval + vault.gracePeriod) / 86400)}d` : `${vault.heartbeatInterval + vault.gracePeriod}s`}</span>
               </div>
             </div>
           </div>
@@ -215,8 +279,11 @@ const DashboardPage = () => {
                 <div className="text-right">
                   <p className="font-black text-2xl">{(h.splitBps / 100).toFixed(0)}%</p>
                   <p className="text-xs font-bold text-muted-foreground">
-                    {(vault.sbtcDeposit * h.splitBps / 10000).toFixed(4)} sBTC
+                    {((vault.sbtcBalance / 1e8) * h.splitBps / 10000).toFixed(8)} sBTC
                   </p>
+                  {h.hasClaimed && (
+                    <span className="neo-badge bg-accent-lime text-xs mt-1 inline-block">Claimed</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -229,7 +296,7 @@ const DashboardPage = () => {
             <div className="flex items-center gap-3">
               <Shield className="h-6 w-6" strokeWidth={2.5} />
               <div>
-                <p className="font-black">Guardian Active</p>
+                <p className="font-black">Guardian {vault.guardianPauseUsed ? "(Pause Used)" : "Active"}</p>
                 <p className="text-sm font-mono text-muted-foreground">{vault.guardian}</p>
               </div>
             </div>
@@ -237,19 +304,30 @@ const DashboardPage = () => {
         )}
 
         {/* Emergency */}
-        <div className="neo-card-static border-accent-red">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-black text-lg">Emergency Withdraw</h3>
-              <p className="text-sm font-medium text-muted-foreground">
-                Reclaim all assets and cancel the vault.
-              </p>
+        {vault.state !== "distributed" && (
+          <div className="neo-card-static border-accent-red">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-black text-lg">Emergency Withdraw</h3>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Reclaim all sBTC and cancel the vault permanently.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="default"
+                onClick={handleEmergencyWithdraw}
+                disabled={withdrawing}
+              >
+                {withdrawing ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Withdrawing...</>
+                ) : (
+                  <><AlertTriangle className="h-4 w-4" /> Emergency Withdraw</>
+                )}
+              </Button>
             </div>
-            <Button variant="destructive" size="default">
-              <AlertTriangle className="h-4 w-4" /> Emergency Withdraw
-            </Button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
