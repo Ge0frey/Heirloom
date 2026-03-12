@@ -12,30 +12,61 @@ import {
   Trash2,
   Heart,
   Clock,
-  Users,
   Shield,
   Bitcoin,
+  DollarSign,
   CheckCircle,
   Loader2,
   ExternalLink,
-  Zap,
 } from "lucide-react";
 
 const STEPS = ["Heartbeat", "Heirs", "Deposit", "Review"];
 
-type SubmitState = "idle" | "creating" | "depositing" | "complete" | "error";
+type SubmitState = "idle" | "creating" | "depositing-sbtc" | "depositing-usdcx" | "complete" | "error";
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60 > 0 ? `${seconds % 60}s` : ""}`.trim();
+  if (seconds < 86400) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  const d = Math.round(seconds / 86400);
+  return `${d} day${d !== 1 ? "s" : ""}`;
+}
+
+const HEARTBEAT_PRESETS: { label: string; seconds: number }[] = [
+  { label: "30s", seconds: 30 },
+  { label: "1m", seconds: 60 },
+  { label: "30d", seconds: 30 * 86400 },
+  { label: "60d", seconds: 60 * 86400 },
+  { label: "90d", seconds: 90 * 86400 },
+  { label: "180d", seconds: 180 * 86400 },
+  { label: "365d", seconds: 365 * 86400 },
+];
+
+const GRACE_PRESETS: { label: string; seconds: number }[] = [
+  { label: "15s", seconds: 15 },
+  { label: "30s", seconds: 30 },
+  { label: "7d", seconds: 7 * 86400 },
+  { label: "14d", seconds: 14 * 86400 },
+  { label: "30d", seconds: 30 * 86400 },
+  { label: "60d", seconds: 60 * 86400 },
+  { label: "90d", seconds: 90 * 86400 },
+];
 
 const CreateVaultPage = () => {
   const { stxAddress } = useWallet();
-  const { createVaultOnChain, depositSbtcOnChain } = useVault();
+  const { createVaultOnChain, depositSbtcOnChain, depositUsdcxOnChain } = useVault();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [step, setStep] = useState(0);
 
-  // Step 1: Heartbeat
-  const [heartbeatDays, setHeartbeatDays] = useState(90);
-  const [graceDays, setGraceDays] = useState(30);
+  // Step 1: Heartbeat (stored in seconds)
+  const [heartbeatSeconds, setHeartbeatSeconds] = useState(90 * 86400);
+  const [graceSeconds, setGraceSeconds] = useState(30 * 86400);
 
   // Step 2: Heirs
   const [heirs, setHeirs] = useState<Heir[]>([
@@ -44,6 +75,7 @@ const CreateVaultPage = () => {
 
   // Step 3: Deposit
   const [sbtcDeposit, setSbtcDeposit] = useState(0);
+  const [usdcxDeposit, setUsdcxDeposit] = useState(0);
 
   // Step 2: Guardian
   const [guardian, setGuardian] = useState("");
@@ -54,6 +86,10 @@ const CreateVaultPage = () => {
 
   const totalBps = heirs.reduce((sum, h) => sum + h.splitBps, 0);
   const isHeirsValid = heirs.length > 0 && totalBps === 10000 && heirs.every((h) => h.address.trim().length > 0);
+
+  // Slider values derived from seconds (days)
+  const heartbeatSliderDays = Math.max(1, Math.round(heartbeatSeconds / 86400));
+  const graceSliderDays = Math.max(1, Math.round(graceSeconds / 86400));
 
   const addHeir = () => {
     if (heirs.length >= 10) return;
@@ -69,19 +105,9 @@ const CreateVaultPage = () => {
     setHeirs(heirs.map((h, i) => (i === idx ? { ...h, [field]: value } : h)));
   };
 
-  const setDemoPreset = () => {
-    setHeartbeatDays(0); // will use seconds directly
-    setGraceDays(0);
-    // Set raw seconds for demo: 120s heartbeat, 60s grace
-    setHeartbeatDays(1); // Minimum 1 day for normal, but we'll handle demo in submit
-    setGraceDays(1);
-  };
-
   const handleSubmit = async () => {
     try {
       setSubmitState("creating");
-      const heartbeatSeconds = heartbeatDays * 86400;
-      const graceSeconds = graceDays * 86400;
 
       const createTxId = await createVaultOnChain(
         heartbeatSeconds,
@@ -91,11 +117,17 @@ const CreateVaultPage = () => {
       );
       setTxId(createTxId);
 
-      // If sBTC deposit > 0, submit deposit tx
       if (sbtcDeposit > 0) {
-        setSubmitState("depositing");
+        setSubmitState("depositing-sbtc");
         const satsAmount = Math.round(sbtcDeposit * 1e8);
         const depositTxId = await depositSbtcOnChain(satsAmount);
+        setTxId(depositTxId);
+      }
+
+      if (usdcxDeposit > 0) {
+        setSubmitState("depositing-usdcx");
+        const microAmount = Math.round(usdcxDeposit * 1e6);
+        const depositTxId = await depositUsdcxOnChain(microAmount);
         setTxId(depositTxId);
       }
 
@@ -115,45 +147,10 @@ const CreateVaultPage = () => {
     }
   };
 
-  const handleDemoSubmit = async () => {
-    try {
-      setSubmitState("creating");
-      // Demo mode: 120s heartbeat, 60s grace
-      const createTxId = await createVaultOnChain(
-        120,
-        60,
-        heirs,
-        guardian.trim() || undefined
-      );
-      setTxId(createTxId);
-
-      if (sbtcDeposit > 0) {
-        setSubmitState("depositing");
-        const satsAmount = Math.round(sbtcDeposit * 1e8);
-        const depositTxId = await depositSbtcOnChain(satsAmount);
-        setTxId(depositTxId);
-      }
-
-      setSubmitState("complete");
-      toast({
-        title: "Demo Vault Created!",
-        description: "120s heartbeat / 60s grace for testing.",
-      });
-      setTimeout(() => navigate("/dashboard"), 3000);
-    } catch (err: any) {
-      setSubmitState("error");
-      toast({
-        title: "Transaction Failed",
-        description: err?.message || "Something went wrong",
-        variant: "destructive",
-      });
-    }
-  };
-
   const canProceed = () => {
-    if (step === 0) return heartbeatDays >= 1 && graceDays >= 1;
+    if (step === 0) return heartbeatSeconds > 0 && graceSeconds > 0;
     if (step === 1) return isHeirsValid;
-    if (step === 2) return true; // deposit is optional
+    if (step === 2) return true;
     return true;
   };
 
@@ -177,7 +174,11 @@ const CreateVaultPage = () => {
                 <Loader2 className="h-10 w-10 animate-spin" strokeWidth={2.5} />
               </div>
               <h2 className="text-3xl font-black mb-3">
-                {submitState === "creating" ? "Creating Vault..." : "Depositing sBTC..."}
+                {submitState === "creating"
+                  ? "Creating Vault..."
+                  : submitState === "depositing-sbtc"
+                    ? "Depositing sBTC..."
+                    : "Depositing USDCx..."}
               </h2>
               <p className="text-lg font-medium text-muted-foreground mb-4">
                 Confirm the transaction in your wallet
@@ -268,24 +269,28 @@ const CreateVaultPage = () => {
                     type="range"
                     min={1}
                     max={365}
-                    value={heartbeatDays}
-                    onChange={(e) => setHeartbeatDays(Number(e.target.value))}
+                    value={heartbeatSliderDays}
+                    onChange={(e) => setHeartbeatSeconds(Number(e.target.value) * 86400)}
                     className="w-full h-3 bg-secondary neo-border rounded-full appearance-none cursor-pointer accent-accent-pink"
                   />
                   <div className="flex justify-between items-end">
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Days</span>
-                    <span className="text-5xl font-black">{heartbeatDays}</span>
+                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                      {heartbeatSeconds < 86400 ? "Seconds" : "Days"}
+                    </span>
+                    <span className="text-5xl font-black">
+                      {heartbeatSeconds < 86400 ? heartbeatSeconds : Math.round(heartbeatSeconds / 86400)}
+                    </span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {[30, 60, 90, 180, 365].map((d) => (
+                    {HEARTBEAT_PRESETS.map((p) => (
                       <button
-                        key={d}
-                        onClick={() => setHeartbeatDays(d)}
+                        key={p.label}
+                        onClick={() => setHeartbeatSeconds(p.seconds)}
                         className={`neo-border rounded-lg px-3 py-1 text-sm font-bold transition-all ${
-                          heartbeatDays === d ? "bg-accent-pink" : "bg-secondary"
+                          heartbeatSeconds === p.seconds ? "bg-accent-pink" : "bg-secondary"
                         }`}
                       >
-                        {d}d
+                        {p.label}
                       </button>
                     ))}
                   </div>
@@ -304,24 +309,28 @@ const CreateVaultPage = () => {
                     type="range"
                     min={1}
                     max={90}
-                    value={graceDays}
-                    onChange={(e) => setGraceDays(Number(e.target.value))}
+                    value={graceSliderDays}
+                    onChange={(e) => setGraceSeconds(Number(e.target.value) * 86400)}
                     className="w-full h-3 bg-secondary neo-border rounded-full appearance-none cursor-pointer accent-accent-yellow"
                   />
                   <div className="flex justify-between items-end">
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Days</span>
-                    <span className="text-5xl font-black">{graceDays}</span>
+                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                      {graceSeconds < 86400 ? "Seconds" : "Days"}
+                    </span>
+                    <span className="text-5xl font-black">
+                      {graceSeconds < 86400 ? graceSeconds : Math.round(graceSeconds / 86400)}
+                    </span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {[7, 14, 30, 60, 90].map((d) => (
+                    {GRACE_PRESETS.map((p) => (
                       <button
-                        key={d}
-                        onClick={() => setGraceDays(d)}
+                        key={p.label}
+                        onClick={() => setGraceSeconds(p.seconds)}
                         className={`neo-border rounded-lg px-3 py-1 text-sm font-bold transition-all ${
-                          graceDays === d ? "bg-accent-yellow" : "bg-secondary"
+                          graceSeconds === p.seconds ? "bg-accent-yellow" : "bg-secondary"
                         }`}
                       >
-                        {d}d
+                        {p.label}
                       </button>
                     ))}
                   </div>
@@ -331,7 +340,7 @@ const CreateVaultPage = () => {
 
             <div className="neo-card-static bg-accent-lime/20">
               <p className="text-base font-bold">
-                Total deadline: <span className="text-2xl font-black">{heartbeatDays + graceDays} days</span> — if you don't check in for this long, your heirs can claim.
+                Total deadline: <span className="text-2xl font-black">{formatDuration(heartbeatSeconds + graceSeconds)}</span> — if you don't check in for this long, your heirs can claim.
               </p>
             </div>
           </div>
@@ -418,7 +427,7 @@ const CreateVaultPage = () => {
                   totalBps === 10000 ? "bg-accent-lime" : totalBps > 10000 ? "bg-accent-red" : "bg-accent-yellow"
                 }`}
               >
-                Total: {(totalBps / 100).toFixed(0)}% {totalBps === 10000 ? "✓" : totalBps > 10000 ? "Over!" : "— must be 100%"}
+                Total: {(totalBps / 100).toFixed(0)}% {totalBps === 10000 ? "\u2713" : totalBps > 10000 ? "Over!" : "-- must be 100%"}
               </div>
             </div>
 
@@ -457,11 +466,11 @@ const CreateVaultPage = () => {
                 <span className="bg-accent-orange px-2 inline-block rotate-[-1deg]">vault.</span>
               </h2>
               <p className="text-lg font-medium text-muted-foreground mt-4 max-w-xl">
-                Deposit sBTC into your vault. You can always add more later. This step is optional.
+                Deposit sBTC and/or USDCx into your vault. You can always add more later. This step is optional.
               </p>
             </div>
 
-            <div className="max-w-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="neo-card-static">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="bg-accent-orange neo-border rounded-xl p-3">
@@ -470,7 +479,7 @@ const CreateVaultPage = () => {
                   <div>
                     <h3 className="text-xl font-black">sBTC</h3>
                     <p className="text-sm font-bold text-muted-foreground">
-                      Amount in BTC (will be converted to sats)
+                      Amount in BTC (8 decimals)
                     </p>
                   </div>
                 </div>
@@ -498,6 +507,43 @@ const CreateVaultPage = () => {
                   </div>
                 </div>
               </div>
+
+              <div className="neo-card-static">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="bg-accent-cyan neo-border rounded-xl p-3">
+                    <DollarSign className="h-6 w-6" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black">USDCx</h3>
+                    <p className="text-sm font-bold text-muted-foreground">
+                      Amount in USD (6 decimals)
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={usdcxDeposit}
+                    onChange={(e) => setUsdcxDeposit(Math.max(0, Number(e.target.value)))}
+                    className="w-full neo-border rounded-lg px-4 py-4 bg-background font-black text-3xl text-center neo-shadow-sm focus:bg-accent-cyan/20 focus:outline-none transition-colors"
+                  />
+                  <div className="flex gap-2 flex-wrap">
+                    {[0, 100, 500, 1000, 5000].map((amt) => (
+                      <button
+                        key={amt}
+                        onClick={() => setUsdcxDeposit(amt)}
+                        className={`neo-border rounded-lg px-3 py-1 text-sm font-bold transition-all ${
+                          usdcxDeposit === amt ? "bg-accent-cyan" : "bg-secondary"
+                        }`}
+                      >
+                        {amt === 0 ? "Skip" : `$${amt}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -519,25 +565,29 @@ const CreateVaultPage = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="font-bold">Interval</span>
-                    <span className="font-black text-xl">{heartbeatDays} days</span>
+                    <span className="font-black text-xl">{formatDuration(heartbeatSeconds)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-bold">Grace Period</span>
-                    <span className="font-black text-xl">{graceDays} days</span>
+                    <span className="font-black text-xl">{formatDuration(graceSeconds)}</span>
                   </div>
                   <div className="flex justify-between border-t-4 border-foreground pt-2 mt-2">
                     <span className="font-bold">Total Deadline</span>
-                    <span className="font-black text-xl">{heartbeatDays + graceDays} days</span>
+                    <span className="font-black text-xl">{formatDuration(heartbeatSeconds + graceSeconds)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="neo-card-static">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Deposit</h3>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Deposits</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="font-bold">sBTC</span>
                     <span className="font-black text-xl">{sbtcDeposit > 0 ? sbtcDeposit.toFixed(8) : "None"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-bold">USDCx</span>
+                    <span className="font-black text-xl">{usdcxDeposit > 0 ? `$${usdcxDeposit.toFixed(2)}` : "None"}</span>
                   </div>
                 </div>
               </div>
@@ -563,6 +613,11 @@ const CreateVaultPage = () => {
                           {(sbtcDeposit * h.splitBps / 10000).toFixed(8)} sBTC
                         </p>
                       )}
+                      {usdcxDeposit > 0 && (
+                        <p className="text-xs font-bold text-muted-foreground">
+                          ${(usdcxDeposit * h.splitBps / 10000).toFixed(2)} USDCx
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -576,28 +631,6 @@ const CreateVaultPage = () => {
                 </p>
               </div>
             )}
-
-            {/* Demo mode preset */}
-            <div className="neo-card-static bg-accent-cyan/10 border-accent-cyan">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-black text-lg flex items-center gap-2">
-                    <Zap className="h-5 w-5" /> Demo Mode
-                  </h3>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Create with 120s heartbeat / 60s grace for quick testing
-                  </p>
-                </div>
-                <Button
-                  variant="cyan"
-                  size="default"
-                  onClick={handleDemoSubmit}
-                  disabled={!isHeirsValid}
-                >
-                  <Zap className="h-4 w-4" /> Demo Create
-                </Button>
-              </div>
-            </div>
           </div>
         )}
 
