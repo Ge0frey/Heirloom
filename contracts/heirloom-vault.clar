@@ -6,35 +6,25 @@
 ;; CONSTANTS
 ;; ============================================
 
-;; Contract owner (deployer)
-(define-constant CONTRACT-DEPLOYER tx-sender)
-
 ;; Error codes
-(define-constant ERR-NOT-OWNER (err u100))
 (define-constant ERR-NOT-HEIR (err u101))
 (define-constant ERR-NOT-GUARDIAN (err u102))
 (define-constant ERR-VAULT-NOT-FOUND (err u103))
 (define-constant ERR-VAULT-NOT-CLAIMABLE (err u104))
 (define-constant ERR-ALREADY-CLAIMED (err u105))
 (define-constant ERR-INVALID-SPLITS (err u106))
-(define-constant ERR-DEPOSIT-FAILED (err u107))
-(define-constant ERR-TRANSFER-FAILED (err u108))
 (define-constant ERR-VAULT-ALREADY-EXISTS (err u109))
 (define-constant ERR-VAULT-DISTRIBUTED (err u110))
 (define-constant ERR-GUARDIAN-PAUSE-USED (err u111))
 (define-constant ERR-NOT-IN-GRACE (err u112))
 (define-constant ERR-NO-BALANCE (err u113))
 
-;; sBTC token reference
-;; Testnet: SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token
-;; Devnet uses local mock deployed by same deployer
-(define-constant SBTC-CONTRACT .sbtc-token)
+;; Token references
+(define-constant SBTC-CONTRACT 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet)
+(define-constant USDCX-CONTRACT 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx)
 
 ;; Basis points (10000 = 100%)
 (define-constant BASIS-POINTS u10000)
-
-;; Maximum heirs per vault
-(define-constant MAX-HEIRS u10)
 
 ;; Guardian pause bonus (additional seconds, 30 days = 2592000)
 (define-constant GUARDIAN-PAUSE-BONUS u2592000)
@@ -51,6 +41,7 @@
     grace-period: uint,
     last-heartbeat: uint,
     sbtc-balance: uint,
+    usdcx-balance: uint,
     guardian: (optional principal),
     guardian-pause-used: bool,
     is-distributed: bool,
@@ -93,6 +84,7 @@
   grace-period: uint,
   last-heartbeat: uint,
   sbtc-balance: uint,
+  usdcx-balance: uint,
   guardian: (optional principal),
   guardian-pause-used: bool,
   is-distributed: bool,
@@ -116,6 +108,7 @@
   grace-period: uint,
   last-heartbeat: uint,
   sbtc-balance: uint,
+  usdcx-balance: uint,
   guardian: (optional principal),
   guardian-pause-used: bool,
   is-distributed: bool,
@@ -187,6 +180,7 @@
       grace-period: grace-period,
       last-heartbeat: stacks-block-time,
       sbtc-balance: u0,
+      usdcx-balance: u0,
       guardian: guardian,
       guardian-pause-used: false,
       is-distributed: false,
@@ -216,6 +210,24 @@
     ;; Update balance
     (map-set vaults tx-sender
       (merge vault { sbtc-balance: (+ (get sbtc-balance vault) amount) })
+    )
+
+    (ok true)
+  )
+)
+
+;; Deposit USDCx into vault
+(define-public (deposit-usdcx (amount uint))
+  (let ((vault (unwrap! (map-get? vaults tx-sender) ERR-VAULT-NOT-FOUND)))
+    (asserts! (not (get is-distributed vault)) ERR-VAULT-DISTRIBUTED)
+    (asserts! (> amount u0) ERR-NO-BALANCE)
+
+    ;; Transfer USDCx from sender to this contract
+    (try! (contract-call? USDCX-CONTRACT transfer amount tx-sender current-contract none))
+
+    ;; Update balance
+    (map-set vaults tx-sender
+      (merge vault { usdcx-balance: (+ (get usdcx-balance vault) amount) })
     )
 
     (ok true)
@@ -256,6 +268,7 @@
       ))
       (split-bps (get split-bps heir-data))
       (sbtc-share (/ (* (get sbtc-balance vault) split-bps) BASIS-POINTS))
+      (usdcx-share (/ (* (get usdcx-balance vault) split-bps) BASIS-POINTS))
     )
     ;; Validate vault is claimable
     (asserts! (not (get is-distributed vault)) ERR-VAULT-DISTRIBUTED)
@@ -264,8 +277,16 @@
 
     ;; Transfer sBTC share to heir
     (if (> sbtc-share u0)
-      (try! (as-contract? ((with-ft SBTC-CONTRACT "sbtc" sbtc-share))
+      (try! (as-contract? ((with-ft SBTC-CONTRACT "test-sbtc" sbtc-share))
         (try! (contract-call? SBTC-CONTRACT transfer sbtc-share tx-sender claimer none))
+      ))
+      true
+    )
+
+    ;; Transfer USDCx share to heir
+    (if (> usdcx-share u0)
+      (try! (as-contract? ((with-ft USDCX-CONTRACT "usdcx-token" usdcx-share))
+        (try! (contract-call? USDCX-CONTRACT transfer usdcx-share tx-sender claimer none))
       ))
       true
     )
@@ -288,13 +309,22 @@
       (owner tx-sender)
       (vault (unwrap! (map-get? vaults tx-sender) ERR-VAULT-NOT-FOUND))
       (sbtc-bal (get sbtc-balance vault))
+      (usdcx-bal (get usdcx-balance vault))
     )
     (asserts! (not (get is-distributed vault)) ERR-VAULT-DISTRIBUTED)
 
     ;; Return all sBTC to owner
     (if (> sbtc-bal u0)
-      (try! (as-contract? ((with-ft SBTC-CONTRACT "sbtc" sbtc-bal))
+      (try! (as-contract? ((with-ft SBTC-CONTRACT "test-sbtc" sbtc-bal))
         (try! (contract-call? SBTC-CONTRACT transfer sbtc-bal tx-sender owner none))
+      ))
+      true
+    )
+
+    ;; Return all USDCx to owner
+    (if (> usdcx-bal u0)
+      (try! (as-contract? ((with-ft USDCX-CONTRACT "usdcx-token" usdcx-bal))
+        (try! (contract-call? USDCX-CONTRACT transfer usdcx-bal tx-sender owner none))
       ))
       true
     )
@@ -303,6 +333,7 @@
     (map-set vaults owner
       (merge vault {
         sbtc-balance: u0,
+        usdcx-balance: u0,
         is-distributed: true,
       })
     )
@@ -384,6 +415,7 @@
         )
       ),
       sbtc-balance: (get sbtc-balance vault),
+      usdcx-balance: (get usdcx-balance vault),
       last-heartbeat: (get last-heartbeat vault),
       heartbeat-interval: interval,
       grace-period: (get grace-period vault),
