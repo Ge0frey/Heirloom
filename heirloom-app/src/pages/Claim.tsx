@@ -17,17 +17,20 @@ import {
   ExternalLink,
   AlertTriangle,
   Bitcoin,
+  DollarSign,
 } from "lucide-react";
 
 interface VaultInfo {
   state: string;
   sbtcBalance: number;
+  usdcxBalance: number;
 }
 
 interface HeirClaimInfo {
   splitBps: number;
   hasClaimed: boolean;
   sbtcShare: number;
+  usdcxShare: number;
 }
 
 const ClaimPage = () => {
@@ -62,6 +65,7 @@ const ClaimPage = () => {
       const vault: VaultInfo = {
         state: v.state?.value || "unknown",
         sbtcBalance: parseInt(v["sbtc-balance"]?.value || "0"),
+        usdcxBalance: parseInt(v["usdcx-balance"]?.value || "0"),
       };
       setVaultInfo(vault);
 
@@ -71,8 +75,9 @@ const ClaimPage = () => {
         const splitBps = parseInt(info?.value?.["split-bps"]?.value || "0");
         const hasClaimed = info?.value?.["has-claimed"]?.value === true;
         const sbtcShare = Math.floor((vault.sbtcBalance * splitBps) / 10000);
+        const usdcxShare = Math.floor((vault.usdcxBalance * splitBps) / 10000);
 
-        setHeirInfo({ splitBps, hasClaimed, sbtcShare });
+        setHeirInfo({ splitBps, hasClaimed, sbtcShare, usdcxShare });
       } catch {
         setHeirInfo(null);
         setError("Your connected wallet is not a registered heir for this vault.");
@@ -130,7 +135,7 @@ const ClaimPage = () => {
             <CheckCircle className="h-12 w-12 mx-auto mb-4" strokeWidth={2.5} />
             <h2 className="text-3xl font-black mb-3">Claim Submitted!</h2>
             <p className="text-lg font-medium text-muted-foreground mb-4">
-              Your sBTC share is being transferred to your wallet.
+              Your share is being transferred to your wallet.
             </p>
             <a
               href={explorerTxUrl(claimTxId)}
@@ -207,7 +212,7 @@ const ClaimPage = () => {
                   vaultInfo.state === "grace" ? "bg-accent-yellow/20" :
                   "bg-secondary"
                 }`}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Vault Status</p>
                       <p className="text-3xl font-black uppercase">{vaultInfo.state}</p>
@@ -216,6 +221,12 @@ const ClaimPage = () => {
                       <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">sBTC Balance</p>
                       <p className="text-3xl font-black">{(vaultInfo.sbtcBalance / 1e8).toFixed(8)}</p>
                     </div>
+                    {vaultInfo.usdcxBalance > 0 && (
+                      <div className="text-right">
+                        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">USDCx Balance</p>
+                        <p className="text-3xl font-black">${(vaultInfo.usdcxBalance / 1e6).toFixed(2)}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -223,7 +234,7 @@ const ClaimPage = () => {
                 {heirInfo && (
                   <div className="neo-card-static">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">Your Allocation</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       <div>
                         <p className="text-sm font-bold text-muted-foreground">Share</p>
                         <p className="text-4xl font-black">{(heirInfo.splitBps / 100).toFixed(0)}%</p>
@@ -235,6 +246,15 @@ const ClaimPage = () => {
                           <p className="text-4xl font-black">{(heirInfo.sbtcShare / 1e8).toFixed(8)}</p>
                         </div>
                       </div>
+                      {heirInfo.usdcxShare > 0 && (
+                        <div>
+                          <p className="text-sm font-bold text-muted-foreground">USDCx Amount</p>
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-6 w-6" />
+                            <p className="text-4xl font-black">${(heirInfo.usdcxShare / 1e6).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm font-bold text-muted-foreground">Status</p>
                         <p className="text-4xl font-black">
@@ -262,7 +282,7 @@ const ClaimPage = () => {
                         ) : vaultInfo.state !== "claimable" ? (
                           <>Vault Not Yet Claimable</>
                         ) : (
-                          <><Bitcoin className="h-5 w-5" /> Claim {(heirInfo.sbtcShare / 1e8).toFixed(8)} sBTC</>
+                          <>Claim Inheritance</>
                         )}
                       </Button>
                     </div>
