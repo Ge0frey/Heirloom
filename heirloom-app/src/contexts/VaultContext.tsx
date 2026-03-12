@@ -6,6 +6,7 @@ import {
   getHeirInfo,
   createVault as createVaultContract,
   depositSbtc as depositSbtcContract,
+  depositUsdcx as depositUsdcxContract,
   sendHeartbeat as sendHeartbeatContract,
   emergencyWithdraw as emergencyWithdrawContract,
 } from "@/lib/contracts";
@@ -20,6 +21,7 @@ export interface Heir {
 export interface VaultData {
   state: "active" | "grace" | "claimable" | "distributed";
   sbtcBalance: number; // in sats
+  usdcxBalance: number; // in micro-units (6 decimals)
   lastHeartbeat: number; // unix timestamp seconds
   heartbeatInterval: number; // seconds
   gracePeriod: number; // seconds
@@ -39,6 +41,7 @@ interface VaultState {
   loading: boolean;
   error: string | null;
   pendingTxId: string | null;
+  pendingCreate: boolean;
   fetchVault: () => Promise<void>;
   createVaultOnChain: (
     heartbeatInterval: number,
@@ -47,6 +50,7 @@ interface VaultState {
     guardian?: string
   ) => Promise<string>;
   depositSbtcOnChain: (amount: number) => Promise<string>;
+  depositUsdcxOnChain: (amount: number) => Promise<string>;
   sendHeartbeatOnChain: () => Promise<string>;
   emergencyWithdrawOnChain: () => Promise<string>;
   clearVault: () => void;
@@ -60,6 +64,7 @@ function parseVaultStatus(json: any): Omit<VaultData, "heirs"> | null {
   return {
     state: v.state?.value || "active",
     sbtcBalance: parseInt(v["sbtc-balance"]?.value || "0"),
+    usdcxBalance: parseInt(v["usdcx-balance"]?.value || "0"),
     lastHeartbeat: parseInt(v["last-heartbeat"]?.value || "0"),
     heartbeatInterval: parseInt(v["heartbeat-interval"]?.value || "0"),
     gracePeriod: parseInt(v["grace-period"]?.value || "0"),
@@ -80,6 +85,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingTxId, setPendingTxId] = useState<string | null>(null);
+  const [pendingCreate, setPendingCreate] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchVault = useCallback(async () => {
@@ -129,18 +135,26 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [stxAddress]);
 
-  // Auto-poll every 15 seconds when connected
+  // Clear pendingCreate once vault is found
+  useEffect(() => {
+    if (vault) {
+      setPendingCreate(false);
+    }
+  }, [vault]);
+
+  // Auto-poll: 5s when pending creation, 15s otherwise
   useEffect(() => {
     if (isConnected && stxAddress) {
       fetchVault();
-      pollRef.current = setInterval(fetchVault, 15000);
+      const interval = pendingCreate ? 5000 : 15000;
+      pollRef.current = setInterval(fetchVault, interval);
     } else {
       setVault(null);
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isConnected, stxAddress, fetchVault]);
+  }, [isConnected, stxAddress, fetchVault, pendingCreate]);
 
   const createVaultOnChain = useCallback(
     async (
@@ -157,6 +171,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
       const txId = result?.txid || result?.txId || "";
       setPendingTxId(txId);
+      setPendingCreate(true);
       return txId;
     },
     []
@@ -164,6 +179,13 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const depositSbtcOnChain = useCallback(async (amount: number): Promise<string> => {
     const result = await depositSbtcContract(amount);
+    const txId = result?.txid || result?.txId || "";
+    setPendingTxId(txId);
+    return txId;
+  }, []);
+
+  const depositUsdcxOnChain = useCallback(async (amount: number): Promise<string> => {
+    const result = await depositUsdcxContract(amount);
     const txId = result?.txid || result?.txId || "";
     setPendingTxId(txId);
     return txId;
@@ -186,6 +208,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearVault = useCallback(() => {
     setVault(null);
     setPendingTxId(null);
+    setPendingCreate(false);
     setError(null);
   }, []);
 
@@ -196,9 +219,11 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         loading,
         error,
         pendingTxId,
+        pendingCreate,
         fetchVault,
         createVaultOnChain,
         depositSbtcOnChain,
+        depositUsdcxOnChain,
         sendHeartbeatOnChain,
         emergencyWithdrawOnChain,
         clearVault,
