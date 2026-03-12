@@ -1,46 +1,58 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import {
+  connect,
+  disconnect as stacksDisconnect,
+  isConnected as stacksIsConnected,
+  getLocalStorage,
+} from "@stacks/connect";
 
 interface WalletState {
   isConnected: boolean;
-  address: string | null;
-  walletType: "leather" | "xverse" | null;
-  sbtcBalance: number;
-  usdcxBalance: number;
-  connect: (type: "leather" | "xverse") => Promise<void>;
-  disconnect: () => void;
+  stxAddress: string | null;
+  connectWallet: () => Promise<void>;
+  disconnectWallet: () => void;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
 
-const MOCK_ADDRESSES = {
-  leather: "SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7",
-  xverse: "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVGR",
-};
-
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [address, setAddress] = useState<string | null>(null);
-  const [walletType, setWalletType] = useState<"leather" | "xverse" | null>(null);
-  const [sbtcBalance] = useState(1.2847);
-  const [usdcxBalance] = useState(12500.0);
+  const [stxAddress, setStxAddress] = useState<string | null>(null);
 
-  const connect = useCallback(async (type: "leather" | "xverse") => {
-    // Simulate wallet connection delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setWalletType(type);
-    setAddress(MOCK_ADDRESSES[type]);
-    setIsConnected(true);
+  // Restore connection on mount
+  useEffect(() => {
+    if (stacksIsConnected()) {
+      const data = getLocalStorage();
+      if (data?.addresses) {
+        const addr = data.addresses.stx?.[0]?.address || null;
+        if (addr) {
+          setStxAddress(addr);
+          setIsConnected(true);
+        }
+      }
+    }
   }, []);
 
-  const disconnect = useCallback(() => {
+  const connectWallet = useCallback(async () => {
+    try {
+      const response = await connect();
+      const addr = response.addresses.stx?.[0]?.address || null;
+      setStxAddress(addr);
+      setIsConnected(true);
+    } catch (error) {
+      console.error("Wallet connection failed:", error);
+    }
+  }, []);
+
+  const disconnectWallet = useCallback(() => {
+    stacksDisconnect();
     setIsConnected(false);
-    setAddress(null);
-    setWalletType(null);
+    setStxAddress(null);
   }, []);
 
   return (
     <WalletContext.Provider
-      value={{ isConnected, address, walletType, sbtcBalance, usdcxBalance, connect, disconnect }}
+      value={{ isConnected, stxAddress, connectWallet, disconnectWallet }}
     >
       {children}
     </WalletContext.Provider>
