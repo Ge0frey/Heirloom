@@ -81,7 +81,7 @@ plan:
       path: .cache/requirements/ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx.clar
       clarity-version: 3
     - transaction-type: emulated-contract-publish
-      contract-name: heirloom-vault-v3
+      contract-name: heirloom-vault-v6
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/heirloom-vault.clar
       clarity-version: 4

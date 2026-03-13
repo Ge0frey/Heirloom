@@ -8,9 +8,9 @@ plan:
   - id: 0
     transactions:
     - transaction-type: contract-publish
-      contract-name: heirloom-vault-v3
+      contract-name: heirloom-vault-v6
       expected-sender: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
-      cost: 128720
+      cost: 136370
       path: contracts/heirloom-vault.clar
       anchor-block-only: true
       clarity-version: 4
