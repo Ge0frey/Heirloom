@@ -178,18 +178,20 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const depositSbtcOnChain = useCallback(async (amount: number): Promise<string> => {
-    const result = await depositSbtcContract(amount);
+    if (!stxAddress) throw new Error("Wallet not connected");
+    const result = await depositSbtcContract(amount, stxAddress);
     const txId = result?.txid || result?.txId || "";
     setPendingTxId(txId);
     return txId;
-  }, []);
+  }, [stxAddress]);
 
   const depositUsdcxOnChain = useCallback(async (amount: number): Promise<string> => {
-    const result = await depositUsdcxContract(amount);
+    if (!stxAddress) throw new Error("Wallet not connected");
+    const result = await depositUsdcxContract(amount, stxAddress);
     const txId = result?.txid || result?.txId || "";
     setPendingTxId(txId);
     return txId;
-  }, []);
+  }, [stxAddress]);
 
   const sendHeartbeatOnChain = useCallback(async (): Promise<string> => {
     const result = await sendHeartbeatContract();
