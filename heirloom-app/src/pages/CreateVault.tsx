@@ -58,7 +58,7 @@ const GRACE_PRESETS: { label: string; seconds: number }[] = [
 
 const CreateVaultPage = () => {
   const { stxAddress } = useWallet();
-  const { createVaultOnChain, depositSbtcOnChain, depositUsdcxOnChain } = useVault();
+  const { vault, createVaultOnChain, depositSbtcOnChain, depositUsdcxOnChain } = useVault();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -107,15 +107,17 @@ const CreateVaultPage = () => {
 
   const handleSubmit = async () => {
     try {
-      setSubmitState("creating");
-
-      const createTxId = await createVaultOnChain(
-        heartbeatSeconds,
-        graceSeconds,
-        heirs,
-        guardian.trim() || undefined
-      );
-      setTxId(createTxId);
+      // Skip vault creation if one already exists for this wallet
+      if (!vault) {
+        setSubmitState("creating");
+        const createTxId = await createVaultOnChain(
+          heartbeatSeconds,
+          graceSeconds,
+          heirs,
+          guardian.trim() || undefined
+        );
+        setTxId(createTxId);
+      }
 
       if (sbtcDeposit > 0) {
         setSubmitState("depositing-sbtc");
@@ -133,8 +135,10 @@ const CreateVaultPage = () => {
 
       setSubmitState("complete");
       toast({
-        title: "Vault Created!",
-        description: "Your heartbeat vault is live on-chain.",
+        title: vault ? "Deposits Submitted!" : "Vault Created!",
+        description: vault
+          ? "Your deposits have been submitted on-chain."
+          : "Your heartbeat vault is live on-chain.",
       });
       setTimeout(() => navigate("/dashboard"), 3000);
     } catch (err: any) {
