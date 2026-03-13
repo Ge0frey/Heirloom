@@ -204,8 +204,11 @@
     (asserts! (not (get is-distributed vault)) ERR-VAULT-DISTRIBUTED)
     (asserts! (> amount u0) ERR-NO-BALANCE)
 
-    ;; Transfer sBTC from sender to this contract
-    (try! (contract-call? SBTC-CONTRACT transfer amount tx-sender current-contract none))
+    ;; Transfer sBTC from sender to this contract (Clarity 4: restrict-assets? with with-ft)
+    (try! (restrict-assets? tx-sender
+      ((with-ft 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet "test-sbtc" amount))
+      (try! (contract-call? 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet transfer amount tx-sender current-contract none))
+    ))
 
     ;; Update balance
     (map-set vaults tx-sender
@@ -222,8 +225,11 @@
     (asserts! (not (get is-distributed vault)) ERR-VAULT-DISTRIBUTED)
     (asserts! (> amount u0) ERR-NO-BALANCE)
 
-    ;; Transfer USDCx from sender to this contract
-    (try! (contract-call? USDCX-CONTRACT transfer amount tx-sender current-contract none))
+    ;; Transfer USDCx from sender to this contract (Clarity 4: restrict-assets? with with-ft)
+    (try! (restrict-assets? tx-sender
+      ((with-ft 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx "usdcx-token" amount))
+      (try! (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx transfer amount tx-sender current-contract none))
+    ))
 
     ;; Update balance
     (map-set vaults tx-sender
@@ -277,16 +283,16 @@
 
     ;; Transfer sBTC share to heir
     (if (> sbtc-share u0)
-      (try! (as-contract? ((with-ft SBTC-CONTRACT "test-sbtc" sbtc-share))
-        (try! (contract-call? SBTC-CONTRACT transfer sbtc-share tx-sender claimer none))
+      (try! (as-contract? ((with-ft 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet "test-sbtc" sbtc-share))
+        (try! (contract-call? 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet transfer sbtc-share tx-sender claimer none))
       ))
       true
     )
 
     ;; Transfer USDCx share to heir
     (if (> usdcx-share u0)
-      (try! (as-contract? ((with-ft USDCX-CONTRACT "usdcx-token" usdcx-share))
-        (try! (contract-call? USDCX-CONTRACT transfer usdcx-share tx-sender claimer none))
+      (try! (as-contract? ((with-ft 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx "usdcx-token" usdcx-share))
+        (try! (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx transfer usdcx-share tx-sender claimer none))
       ))
       true
     )
@@ -315,16 +321,16 @@
 
     ;; Return all sBTC to owner
     (if (> sbtc-bal u0)
-      (try! (as-contract? ((with-ft SBTC-CONTRACT "test-sbtc" sbtc-bal))
-        (try! (contract-call? SBTC-CONTRACT transfer sbtc-bal tx-sender owner none))
+      (try! (as-contract? ((with-ft 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet "test-sbtc" sbtc-bal))
+        (try! (contract-call? 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet transfer sbtc-bal tx-sender owner none))
       ))
       true
     )
 
     ;; Return all USDCx to owner
     (if (> usdcx-bal u0)
-      (try! (as-contract? ((with-ft USDCX-CONTRACT "usdcx-token" usdcx-bal))
-        (try! (contract-call? USDCX-CONTRACT transfer usdcx-bal tx-sender owner none))
+      (try! (as-contract? ((with-ft 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx "usdcx-token" usdcx-bal))
+        (try! (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx transfer usdcx-bal tx-sender owner none))
       ))
       true
     )
