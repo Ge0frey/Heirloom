@@ -1,10 +1,20 @@
 import { request } from '@stacks/connect';
 import {
   Cl,
+  Pc,
   fetchCallReadOnlyFunction,
   cvToJSON,
 } from '@stacks/transactions';
-import { CONTRACT_ADDRESS, CONTRACT_NAME, FULL_CONTRACT_ID, NETWORK } from '../config/constants';
+import {
+  CONTRACT_ADDRESS,
+  CONTRACT_NAME,
+  FULL_CONTRACT_ID,
+  NETWORK,
+  SBTC_CONTRACT,
+  SBTC_TOKEN_NAME,
+  USDCX_CONTRACT,
+  USDCX_TOKEN_NAME,
+} from '../config/constants';
 
 // ---- WRITE FUNCTIONS (require wallet signature) ----
 
@@ -34,21 +44,27 @@ export async function createVault(
   });
 }
 
-export async function depositSbtc(amount: number) {
+export async function depositSbtc(amount: number, senderAddress: string) {
   return request('stx_callContract', {
     contract: FULL_CONTRACT_ID,
     functionName: 'deposit-sbtc',
     functionArgs: [Cl.uint(amount)],
     network: NETWORK as 'testnet' | 'mainnet',
+    postConditions: [
+      Pc.principal(senderAddress).willSendEq(amount).ft(SBTC_CONTRACT, SBTC_TOKEN_NAME),
+    ],
   });
 }
 
-export async function depositUsdcx(amount: number) {
+export async function depositUsdcx(amount: number, senderAddress: string) {
   return request('stx_callContract', {
     contract: FULL_CONTRACT_ID,
     functionName: 'deposit-usdcx',
     functionArgs: [Cl.uint(amount)],
     network: NETWORK as 'testnet' | 'mainnet',
+    postConditions: [
+      Pc.principal(senderAddress).willSendEq(amount).ft(USDCX_CONTRACT, USDCX_TOKEN_NAME),
+    ],
   });
 }
 
@@ -67,6 +83,7 @@ export async function claimInheritance(vaultOwner: string) {
     functionName: 'claim',
     functionArgs: [Cl.principal(vaultOwner)],
     network: NETWORK as 'testnet' | 'mainnet',
+    postConditionMode: 'allow',
   });
 }
 
@@ -76,6 +93,7 @@ export async function emergencyWithdraw() {
     functionName: 'emergency-withdraw',
     functionArgs: [],
     network: NETWORK as 'testnet' | 'mainnet',
+    postConditionMode: 'allow',
   });
 }
 
