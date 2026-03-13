@@ -59,23 +59,30 @@ interface VaultState {
 const VaultContext = createContext<VaultState | null>(null);
 
 function parseVaultStatus(json: any): Omit<VaultData, "heirs"> | null {
-  if (!json?.value) return null;
-  const v = json.value;
+  // cvToJSON wraps ResponseOk as { success, type, value: cvToJSON(inner) }
+  // and Tuple as { type, value: { field: { type, value }, ... } }
+  // So for (ok { ... }), fields are at json.value.value
+  const tupleWrapper = json?.value;
+  if (!tupleWrapper) return null;
+  // Handle both possible shapes: tupleWrapper could be { type, value: {...} } or flat fields
+  const v = tupleWrapper.value && typeof tupleWrapper.value === "object" && !Array.isArray(tupleWrapper.value) && tupleWrapper.type
+    ? tupleWrapper.value
+    : tupleWrapper;
   return {
-    state: v.state?.value || "active",
-    sbtcBalance: parseInt(v["sbtc-balance"]?.value || "0"),
-    usdcxBalance: parseInt(v["usdcx-balance"]?.value || "0"),
-    lastHeartbeat: parseInt(v["last-heartbeat"]?.value || "0"),
-    heartbeatInterval: parseInt(v["heartbeat-interval"]?.value || "0"),
-    gracePeriod: parseInt(v["grace-period"]?.value || "0"),
-    elapsedSeconds: parseInt(v["elapsed-seconds"]?.value || "0"),
-    secondsUntilGrace: parseInt(v["seconds-until-grace"]?.value || "0"),
-    secondsUntilClaimable: parseInt(v["seconds-until-claimable"]?.value || "0"),
-    heirCount: parseInt(v["heir-count"]?.value || "0"),
-    guardian: v.guardian?.value?.value || null,
-    guardianPauseUsed: v["guardian-pause-used"]?.value === true,
-    isDistributed: v["is-distributed"]?.value === true,
-    createdAt: parseInt(v["created-at"]?.value || "0"),
+    state: v.state?.value || v.state || "active",
+    sbtcBalance: parseInt(v["sbtc-balance"]?.value ?? v["sbtc-balance"] ?? "0"),
+    usdcxBalance: parseInt(v["usdcx-balance"]?.value ?? v["usdcx-balance"] ?? "0"),
+    lastHeartbeat: parseInt(v["last-heartbeat"]?.value ?? v["last-heartbeat"] ?? "0"),
+    heartbeatInterval: parseInt(v["heartbeat-interval"]?.value ?? v["heartbeat-interval"] ?? "0"),
+    gracePeriod: parseInt(v["grace-period"]?.value ?? v["grace-period"] ?? "0"),
+    elapsedSeconds: parseInt(v["elapsed-seconds"]?.value ?? v["elapsed-seconds"] ?? "0"),
+    secondsUntilGrace: parseInt(v["seconds-until-grace"]?.value ?? v["seconds-until-grace"] ?? "0"),
+    secondsUntilClaimable: parseInt(v["seconds-until-claimable"]?.value ?? v["seconds-until-claimable"] ?? "0"),
+    heirCount: parseInt(v["heir-count"]?.value ?? v["heir-count"] ?? "0"),
+    guardian: v.guardian?.value?.value ?? v.guardian?.value ?? null,
+    guardianPauseUsed: v["guardian-pause-used"]?.value === true || v["guardian-pause-used"] === true,
+    isDistributed: v["is-distributed"]?.value === true || v["is-distributed"] === true,
+    createdAt: parseInt(v["created-at"]?.value ?? v["created-at"] ?? "0"),
   };
 }
 
@@ -101,20 +108,32 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       // Fetch heir list
+      // cvToJSON: ResponseOk → { value: cvToJSON(List) } → { value: { type, value: [...] } }
       const heirListJson = await getHeirList(stxAddress);
+      const heirListInner = heirListJson?.value;
+      const heirListArray = Array.isArray(heirListInner)
+        ? heirListInner
+        : Array.isArray(heirListInner?.value)
+          ? heirListInner.value
+          : [];
       const heirAddresses: string[] =
-        heirListJson?.value?.map((h: any) => h.value) || [];
+        heirListArray.map((h: any) => h.value ?? h) || [];
 
       // Fetch individual heir info
+      // cvToJSON: ResponseOk wrapping Tuple → info.value may be { type, value: { fields } }
       const heirs: Heir[] = await Promise.all(
         heirAddresses.map(async (addr, i) => {
           try {
             const info = await getHeirInfo(stxAddress, addr);
+            const infoWrapper = info?.value;
+            const infoFields = infoWrapper?.value && typeof infoWrapper.value === "object" && infoWrapper.type
+              ? infoWrapper.value
+              : infoWrapper;
             return {
               address: addr,
               label: `Heir ${i + 1}`,
-              splitBps: parseInt(info?.value?.["split-bps"]?.value || "0"),
-              hasClaimed: info?.value?.["has-claimed"]?.value === true,
+              splitBps: parseInt(infoFields?.["split-bps"]?.value ?? infoFields?.["split-bps"] ?? "0"),
+              hasClaimed: infoFields?.["has-claimed"]?.value === true || infoFields?.["has-claimed"] === true,
             };
           } catch {
             return { address: addr, label: `Heir ${i + 1}`, splitBps: 0 };
