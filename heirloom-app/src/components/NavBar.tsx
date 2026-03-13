@@ -45,6 +45,9 @@ const NavBar = () => {
                 <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
                   Dashboard
                 </Button>
+                <Button variant="orange" size="sm" onClick={() => navigate("/claim")}>
+                  Claim
+                </Button>
                 <Button variant="ghost" size="sm" onClick={disconnectWallet}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -76,17 +79,35 @@ const NavBar = () => {
                 {item}
               </a>
             ))}
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full"
-              onClick={() => {
-                setOpen(false);
-                handleLaunch();
-              }}
-            >
-              {isConnected ? "Dashboard" : "Launch App"}
-            </Button>
+            {isConnected ? (
+              <>
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => { setOpen(false); navigate("/dashboard"); }}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="orange"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => { setOpen(false); navigate("/claim"); }}
+                >
+                  Claim Inheritance
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full"
+                onClick={() => { setOpen(false); handleLaunch(); }}
+              >
+                Launch App
+              </Button>
+            )}
           </div>
         )}
       </nav>

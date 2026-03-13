@@ -56,24 +56,32 @@ const ClaimPage = () => {
 
     try {
       const statusJson = await getVaultStatus(ownerAddress.trim());
-      const v = statusJson?.value;
-      if (!v) {
+      const tupleWrapper = statusJson?.value;
+      if (!tupleWrapper) {
         setError("Vault not found for this address.");
         return;
       }
+      // Handle both nested { type, value: { ... } } and flat shapes from cvToJSON
+      const v = tupleWrapper.value && typeof tupleWrapper.value === "object" && !Array.isArray(tupleWrapper.value) && tupleWrapper.type
+        ? tupleWrapper.value
+        : tupleWrapper;
 
       const vault: VaultInfo = {
-        state: v.state?.value || "unknown",
-        sbtcBalance: parseInt(v["sbtc-balance"]?.value || "0"),
-        usdcxBalance: parseInt(v["usdcx-balance"]?.value || "0"),
+        state: v.state?.value || v.state || "unknown",
+        sbtcBalance: parseInt(v["sbtc-balance"]?.value ?? v["sbtc-balance"] ?? "0"),
+        usdcxBalance: parseInt(v["usdcx-balance"]?.value ?? v["usdcx-balance"] ?? "0"),
       };
       setVaultInfo(vault);
 
       // Look up heir info for connected wallet
       try {
         const info = await getHeirInfo(ownerAddress.trim(), stxAddress);
-        const splitBps = parseInt(info?.value?.["split-bps"]?.value || "0");
-        const hasClaimed = info?.value?.["has-claimed"]?.value === true;
+        const infoWrapper = info?.value;
+        const infoFields = infoWrapper?.value && typeof infoWrapper.value === "object" && infoWrapper.type
+          ? infoWrapper.value
+          : infoWrapper;
+        const splitBps = parseInt(infoFields?.["split-bps"]?.value ?? infoFields?.["split-bps"] ?? "0");
+        const hasClaimed = infoFields?.["has-claimed"]?.value === true || infoFields?.["has-claimed"] === true;
         const sbtcShare = Math.floor((vault.sbtcBalance * splitBps) / 10000);
         const usdcxShare = Math.floor((vault.usdcxBalance * splitBps) / 10000);
 

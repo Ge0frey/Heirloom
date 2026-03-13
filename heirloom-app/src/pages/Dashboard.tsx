@@ -36,35 +36,45 @@ const DashboardPage = () => {
   const [lastTxId, setLastTxId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
-  // Local countdown timer that decrements between polls
+  // Local countdown timer based on wall-clock time and vault's absolute timestamps.
+  // Only restarts when lastHeartbeat actually changes (i.e. a real heartbeat was sent),
+  // not on every poll cycle.
   useEffect(() => {
     if (!vault) return;
-    const targetSeconds = vault.state === "active"
-      ? vault.secondsUntilGrace
-      : vault.state === "grace"
-        ? vault.secondsUntilClaimable
-        : 0;
-
-    let remaining = targetSeconds;
 
     const updateCountdown = () => {
-      if (remaining <= 0) {
+      if (vault.isDistributed) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
       }
+
+      const now = Math.floor(Date.now() / 1000);
+      const graceDeadline = vault.lastHeartbeat + vault.heartbeatInterval;
+      const pauseBonus = vault.guardianPauseUsed ? 2592000 : 0;
+      const claimableDeadline = graceDeadline + vault.gracePeriod + pauseBonus;
+
+      let remaining: number;
+      if (now < graceDeadline) {
+        remaining = graceDeadline - now;
+      } else if (now < claimableDeadline) {
+        remaining = claimableDeadline - now;
+      } else {
+        remaining = 0;
+      }
+
+      remaining = Math.max(0, remaining);
       setCountdown({
         days: Math.floor(remaining / 86400),
         hours: Math.floor((remaining % 86400) / 3600),
         minutes: Math.floor((remaining % 3600) / 60),
         seconds: remaining % 60,
       });
-      remaining--;
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [vault]);
+  }, [vault?.lastHeartbeat, vault?.heartbeatInterval, vault?.gracePeriod, vault?.isDistributed, vault?.guardianPauseUsed]);
 
   const handleHeartbeat = async () => {
     setSendingHeartbeat(true);
@@ -147,6 +157,12 @@ const DashboardPage = () => {
           <Button variant="lime" onClick={() => navigate("/create-vault")}>
             Create Vault
           </Button>
+          <div className="border-t-4 border-foreground pt-6 mt-6">
+            <p className="text-sm font-bold text-muted-foreground mb-3">Were you named as an heir?</p>
+            <Button variant="orange" onClick={() => navigate("/claim")}>
+              Claim Inheritance
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -154,7 +170,17 @@ const DashboardPage = () => {
 
   const sbtcDisplay = (vault.sbtcBalance / 1e8).toFixed(8);
   const usdcxDisplay = (vault.usdcxBalance / 1e6).toFixed(2);
-  const countdownLabel = vault.state === "active" ? "Next Heartbeat Due In" : vault.state === "grace" ? "Time Until Claimable" : vault.state === "claimable" ? "Vault Is Claimable" : "Vault Distributed";
+  // Compute countdown label from wall-clock time so it stays in sync with the local countdown
+  const countdownLabel = (() => {
+    if (vault.isDistributed) return "Vault Distributed";
+    const now = Math.floor(Date.now() / 1000);
+    const graceDeadline = vault.lastHeartbeat + vault.heartbeatInterval;
+    const pauseBonus = vault.guardianPauseUsed ? 2592000 : 0;
+    const claimableDeadline = graceDeadline + vault.gracePeriod + pauseBonus;
+    if (now >= claimableDeadline) return "Vault Is Claimable";
+    if (now >= graceDeadline) return "Time Until Claimable";
+    return "Next Heartbeat Due In";
+  })();
 
   return (
     <div className="min-h-screen bg-background">
