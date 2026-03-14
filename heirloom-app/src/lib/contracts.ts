@@ -166,10 +166,17 @@ export async function findVaultsForHeir(heirAddress: string): Promise<Inheritanc
     // For each owner, check if heirAddress is a registered heir
     const checks = Array.from(vaultOwners).map(async (owner): Promise<InheritanceInfo | null> => {
       try {
+        // Skip if the heir is the vault owner themselves
+        if (owner === heirAddress) return null;
+
         const [statusJson, heirInfoJson] = await Promise.all([
           getVaultStatus(owner),
           getHeirInfo(owner, heirAddress),
         ]);
+
+        // Reject error responses (e.g. u101 = not-heir)
+        if (statusJson?.success === false) return null;
+        if (heirInfoJson?.success === false) return null;
 
         // Parse vault status
         const tupleWrapper = statusJson?.value;
@@ -232,10 +239,17 @@ export async function lookupSingleVault(
   heirAddress: string
 ): Promise<InheritanceInfo | null> {
   try {
+    // Cannot be an heir of your own vault
+    if (ownerAddress === heirAddress) return null;
+
     const [statusJson, heirInfoJson] = await Promise.all([
       getVaultStatus(ownerAddress),
       getHeirInfo(ownerAddress, heirAddress),
     ]);
+
+    // Reject error responses (e.g. u101 = not-heir, u103 = vault-not-found)
+    if (statusJson?.success === false) return null;
+    if (heirInfoJson?.success === false) return null;
 
     const tupleWrapper = statusJson?.value;
     const v =
