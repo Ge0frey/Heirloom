@@ -11,7 +11,7 @@ contract_id = "ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet"
 [[project.requirements]]
 contract_id = "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx"
 
-[contracts.heirloom-vault-v7]
+[contracts.heirloom-vault-v8]
 path = "contracts/heirloom-vault.clar"
 clarity_version = 4
 epoch = "latest"

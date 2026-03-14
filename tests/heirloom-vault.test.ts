@@ -9,7 +9,7 @@ const wallet3 = accounts.get("wallet_3")!; // guardian
 
 function createDefaultVault(sender = deployer) {
   return simnet.callPublicFn(
-    "heirloom-vault-v7",
+    "heirloom-vault-v8",
     "create-vault",
     [
       Cl.uint(120), // 2 min interval
@@ -39,7 +39,7 @@ describe("Heirloom Vault", () => {
 
     it("rejects splits that don't sum to 10000", () => {
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "create-vault",
         [
           Cl.uint(120),
@@ -69,7 +69,7 @@ describe("Heirloom Vault", () => {
 
     it("creates vault with guardian", () => {
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "create-vault",
         [
           Cl.uint(120),
@@ -94,7 +94,7 @@ describe("Heirloom Vault", () => {
       simnet.mineEmptyBlocks(10);
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "heartbeat",
         [],
         deployer
@@ -106,7 +106,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "heartbeat",
         [],
         wallet1
@@ -120,7 +120,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "get-vault-status",
         [Cl.principal(deployer)],
         deployer
@@ -142,7 +142,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "deposit-sbtc",
         [Cl.uint(0)],
         deployer
@@ -156,7 +156,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "deposit-usdcx",
         [Cl.uint(0)],
         deployer
@@ -170,7 +170,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "emergency-withdraw",
         [],
         deployer
@@ -181,14 +181,14 @@ describe("Heirloom Vault", () => {
     it("rejects withdraw on distributed vault", () => {
       createDefaultVault();
       simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "emergency-withdraw",
         [],
         deployer
       );
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "emergency-withdraw",
         [],
         deployer
@@ -202,7 +202,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "update-heirs",
         [
           Cl.list([
@@ -225,7 +225,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "update-heirs",
         [
           Cl.list([
@@ -246,7 +246,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "get-heir-info",
         [Cl.principal(deployer), Cl.principal(wallet1)],
         deployer
@@ -262,7 +262,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "get-heir-info",
         [Cl.principal(deployer), Cl.principal(wallet3)],
         deployer
@@ -276,7 +276,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const result = simnet.callReadOnlyFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "get-heir-list",
         [Cl.principal(deployer)],
         deployer
@@ -293,14 +293,14 @@ describe("Heirloom Vault", () => {
     it("rejects heartbeat after emergency withdraw", () => {
       createDefaultVault();
       simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "emergency-withdraw",
         [],
         deployer
       );
 
       const result = simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "heartbeat",
         [],
         deployer
@@ -313,7 +313,7 @@ describe("Heirloom Vault", () => {
     it("allows creating a new vault after emergency-withdraw", () => {
       createDefaultVault();
       simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "emergency-withdraw",
         [],
         deployer
@@ -327,7 +327,7 @@ describe("Heirloom Vault", () => {
     it("new vault after re-creation is active with fresh state", () => {
       createDefaultVault();
       simnet.callPublicFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "emergency-withdraw",
         [],
         deployer
@@ -337,7 +337,7 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       const status = simnet.callReadOnlyFn(
-        "heirloom-vault-v7",
+        "heirloom-vault-v8",
         "get-vault-status",
         [Cl.principal(deployer)],
         deployer
@@ -352,6 +352,95 @@ describe("Heirloom Vault", () => {
       createDefaultVault();
 
       // Try to create again without distributing first
+      const result = createDefaultVault();
+      expect(result.result).toBeErr(Cl.uint(109)); // ERR-VAULT-ALREADY-EXISTS
+    });
+  });
+
+  describe("claim auto-distribution", () => {
+    it("marks vault as distributed after all heirs claim", () => {
+      createDefaultVault();
+
+      // Advance time past the deadline (interval=120 + grace=60 = 180s)
+      simnet.mineEmptyBlocks(200);
+
+      // Heir 1 claims
+      const claim1 = simnet.callPublicFn(
+        "heirloom-vault-v8",
+        "claim",
+        [Cl.principal(deployer)],
+        wallet1
+      );
+      expect(claim1.result).toBeOk(Cl.bool(true));
+
+      // Vault should NOT be distributed yet (1 of 2 heirs claimed)
+      const statusMid = simnet.callReadOnlyFn(
+        "heirloom-vault-v8",
+        "get-vault-status",
+        [Cl.principal(deployer)],
+        deployer
+      );
+      expect((statusMid.result as any).value.value["is-distributed"].type).toBe(
+        ClarityType.BoolFalse
+      );
+
+      // Heir 2 claims
+      const claim2 = simnet.callPublicFn(
+        "heirloom-vault-v8",
+        "claim",
+        [Cl.principal(deployer)],
+        wallet2
+      );
+      expect(claim2.result).toBeOk(Cl.bool(true));
+
+      // Now vault SHOULD be distributed (2 of 2 heirs claimed)
+      const statusEnd = simnet.callReadOnlyFn(
+        "heirloom-vault-v8",
+        "get-vault-status",
+        [Cl.principal(deployer)],
+        deployer
+      );
+      expect((statusEnd.result as any).value.value["is-distributed"].type).toBe(
+        ClarityType.BoolTrue
+      );
+    });
+
+    it("allows re-creation after all heirs claim", () => {
+      createDefaultVault();
+      simnet.mineEmptyBlocks(200);
+
+      // Both heirs claim
+      simnet.callPublicFn(
+        "heirloom-vault-v8",
+        "claim",
+        [Cl.principal(deployer)],
+        wallet1
+      );
+      simnet.callPublicFn(
+        "heirloom-vault-v8",
+        "claim",
+        [Cl.principal(deployer)],
+        wallet2
+      );
+
+      // Owner can now re-create vault
+      const result = createDefaultVault();
+      expect(result.result).toBeOk(Cl.bool(true));
+    });
+
+    it("rejects re-creation when only some heirs have claimed", () => {
+      createDefaultVault();
+      simnet.mineEmptyBlocks(200);
+
+      // Only heir 1 claims
+      simnet.callPublicFn(
+        "heirloom-vault-v8",
+        "claim",
+        [Cl.principal(deployer)],
+        wallet1
+      );
+
+      // Owner cannot re-create yet
       const result = createDefaultVault();
       expect(result.result).toBeErr(Cl.uint(109)); // ERR-VAULT-ALREADY-EXISTS
     });
