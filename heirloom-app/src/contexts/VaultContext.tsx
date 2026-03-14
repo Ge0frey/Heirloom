@@ -59,9 +59,10 @@ interface VaultState {
 const VaultContext = createContext<VaultState | null>(null);
 
 function parseVaultStatus(json: any): Omit<VaultData, "heirs"> | null {
-  // cvToJSON wraps ResponseOk as { success, type, value: cvToJSON(inner) }
-  // and Tuple as { type, value: { field: { type, value }, ... } }
-  // So for (ok { ... }), fields are at json.value.value
+  // cvToJSON wraps ResponseOk as { success: true, type, value: cvToJSON(inner) }
+  // and ResponseErr as { success: false, type, value: cvToJSON(err-value) }
+  // Reject error responses (e.g. u103 = vault not found)
+  if (json?.success === false) return null;
   const tupleWrapper = json?.value;
   if (!tupleWrapper) return null;
   // Handle both possible shapes: tupleWrapper could be { type, value: {...} } or flat fields
@@ -140,6 +141,14 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         })
       );
+
+      // If vault is distributed or all heirs have claimed, treat as no vault
+      // so the owner can create a new one
+      const allClaimed = heirs.length > 0 && heirs.every(h => h.hasClaimed);
+      if (parsed.isDistributed || allClaimed) {
+        setVault(null);
+        return;
+      }
 
       setVault({ ...parsed, heirs });
     } catch (err: any) {
