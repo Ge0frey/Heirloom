@@ -47,6 +47,7 @@
     is-distributed: bool,
     created-at: uint,
     heir-count: uint,
+    claims-count: uint,
   }
 )
 
@@ -90,6 +91,7 @@
   is-distributed: bool,
   created-at: uint,
   heir-count: uint,
+  claims-count: uint,
 }))
   (let (
       (base-deadline (+ (get heartbeat-interval vault) (get grace-period vault)))
@@ -114,6 +116,7 @@
   is-distributed: bool,
   created-at: uint,
   heir-count: uint,
+  claims-count: uint,
 }))
   (- stacks-block-time (get last-heartbeat vault))
 )
@@ -200,6 +203,7 @@
       is-distributed: false,
       created-at: stacks-block-time,
       heir-count: (len heirs-data),
+      claims-count: u0,
     })
 
     ;; Store heir list
@@ -320,6 +324,21 @@
       heir: claimer,
     }
       true
+    )
+
+    ;; Increment claims count and auto-distribute when all heirs have claimed
+    (let (
+        (new-claims-count (+ (get claims-count vault) u1))
+        (all-claimed (is-eq new-claims-count (get heir-count vault)))
+      )
+      (map-set vaults vault-owner
+        (merge vault {
+          sbtc-balance: (- (get sbtc-balance vault) sbtc-share),
+          usdcx-balance: (- (get usdcx-balance vault) usdcx-share),
+          claims-count: new-claims-count,
+          is-distributed: all-claimed,
+        })
+      )
     )
 
     (ok true)
@@ -452,6 +471,7 @@
         (- deadline elapsed)
       ),
       heir-count: (get heir-count vault),
+      claims-count: (get claims-count vault),
       guardian: (get guardian vault),
       guardian-pause-used: (get guardian-pause-used vault),
       is-distributed: (get is-distributed vault),
