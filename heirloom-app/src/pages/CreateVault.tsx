@@ -19,10 +19,11 @@ import {
   Loader2,
   ExternalLink,
 } from "lucide-react";
+import { getVaultStatus } from "@/lib/contracts";
 
 const STEPS = ["Heartbeat", "Heirs", "Deposit", "Review"];
 
-type SubmitState = "idle" | "creating" | "depositing-sbtc" | "depositing-usdcx" | "complete" | "error";
+type SubmitState = "idle" | "creating" | "waiting-confirm" | "depositing-sbtc" | "depositing-usdcx" | "complete" | "error";
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -105,8 +106,25 @@ const CreateVaultPage = () => {
     setHeirs(heirs.map((h, i) => (i === idx ? { ...h, [field]: value } : h)));
   };
 
+  // Poll until vault exists on-chain (max ~5 minutes)
+  const waitForVaultOnChain = async (): Promise<void> => {
+    if (!stxAddress) throw new Error("Wallet not connected");
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      try {
+        const statusJson = await getVaultStatus(stxAddress);
+        if (statusJson?.value) return; // Vault found on-chain
+      } catch {
+        // Vault not found yet, keep polling
+      }
+    }
+    throw new Error("Vault creation timed out. Please deposit from the dashboard.");
+  };
+
   const handleSubmit = async () => {
     try {
+      const needsDeposit = sbtcDeposit > 0 || usdcxDeposit > 0;
+
       // Skip vault creation if one already exists for this wallet
       if (!vault) {
         setSubmitState("creating");
@@ -117,6 +135,12 @@ const CreateVaultPage = () => {
           guardian.trim() || undefined
         );
         setTxId(createTxId);
+
+        // Wait for vault to be confirmed on-chain before depositing
+        if (needsDeposit) {
+          setSubmitState("waiting-confirm");
+          await waitForVaultOnChain();
+        }
       }
 
       if (sbtcDeposit > 0) {
@@ -180,12 +204,16 @@ const CreateVaultPage = () => {
               <h2 className="text-3xl font-black mb-3">
                 {submitState === "creating"
                   ? "Creating Vault..."
-                  : submitState === "depositing-sbtc"
-                    ? "Depositing sBTC..."
-                    : "Depositing USDCx..."}
+                  : submitState === "waiting-confirm"
+                    ? "Waiting for Confirmation..."
+                    : submitState === "depositing-sbtc"
+                      ? "Depositing sBTC..."
+                      : "Depositing USDCx..."}
               </h2>
               <p className="text-lg font-medium text-muted-foreground mb-4">
-                Confirm the transaction in your wallet
+                {submitState === "waiting-confirm"
+                  ? "Waiting for vault creation to confirm on-chain before depositing"
+                  : "Confirm the transaction in your wallet"}
               </p>
             </>
           )}
