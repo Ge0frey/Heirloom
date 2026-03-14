@@ -149,6 +149,17 @@
   )
 )
 
+;; Helper to reset a single heir's claim status (used when re-creating vault after distribution)
+(define-private (reset-heir-claim (entry {
+  heir: principal,
+  split-bps: uint,
+}))
+  (map-set heir-claimed {
+    owner: tx-sender,
+    heir: (get heir entry),
+  } false)
+)
+
 ;; ============================================
 ;; PUBLIC FUNCTIONS
 ;; ============================================
@@ -167,8 +178,11 @@
       (total-splits (fold sum-splits heirs-data u0))
       (heir-addresses (map get-heir-address heirs-data))
     )
-    ;; Validate no existing vault
-    (asserts! (is-none (map-get? vaults tx-sender)) ERR-VAULT-ALREADY-EXISTS)
+    ;; Allow creation if no vault exists, or existing vault is fully distributed
+    (match (map-get? vaults tx-sender)
+      existing-vault (asserts! (get is-distributed existing-vault) ERR-VAULT-ALREADY-EXISTS)
+      true
+    )
     ;; Validate splits sum to 100%
     (asserts! (is-eq total-splits BASIS-POINTS) ERR-INVALID-SPLITS)
     ;; Validate at least one heir
@@ -193,6 +207,9 @@
 
     ;; Store individual heir splits
     (map store-heir-split heirs-data)
+
+    ;; Reset claim status for new heirs (needed when re-creating after distribution)
+    (map reset-heir-claim heirs-data)
 
     (ok true)
   )
