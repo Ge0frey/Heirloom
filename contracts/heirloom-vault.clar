@@ -20,7 +20,7 @@
 (define-constant ERR-NO-BALANCE (err u113))
 
 ;; Token references
-(define-constant SBTC-CONTRACT 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet)
+(define-constant SBTC-CONTRACT 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token)
 (define-constant USDCX-CONTRACT 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx)
 
 ;; Basis points (10000 = 100%)
@@ -227,8 +227,8 @@
 
     ;; Transfer sBTC from sender to this contract (Clarity 4: restrict-assets? with with-ft)
     (try! (restrict-assets? tx-sender
-      ((with-ft 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet "test-sbtc" amount))
-      (try! (contract-call? 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet transfer amount tx-sender current-contract none))
+      ((with-ft 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token "sbtc-token" amount))
+      (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer amount tx-sender current-contract none))
     ))
 
     ;; Update balance
@@ -304,8 +304,8 @@
 
     ;; Transfer sBTC share to heir
     (if (> sbtc-share u0)
-      (try! (as-contract? ((with-ft 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet "test-sbtc" sbtc-share))
-        (try! (contract-call? 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet transfer sbtc-share tx-sender claimer none))
+      (try! (as-contract? ((with-ft 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token "sbtc-token" sbtc-share))
+        (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer sbtc-share tx-sender claimer none))
       ))
       true
     )
@@ -357,8 +357,8 @@
 
     ;; Return all sBTC to owner
     (if (> sbtc-bal u0)
-      (try! (as-contract? ((with-ft 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet "test-sbtc" sbtc-bal))
-        (try! (contract-call? 'ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet transfer sbtc-bal tx-sender owner none))
+      (try! (as-contract? ((with-ft 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token "sbtc-token" sbtc-bal))
+        (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer sbtc-bal tx-sender owner none))
       ))
       true
     )

@@ -8,7 +8,7 @@ plan:
   - id: 0
     transactions:
     - transaction-type: contract-publish
-      contract-name: heirloom-vault-v8
+      contract-name: heirloom-vault-v10
       expected-sender: STZJWVYSKRYV1XBGS8BZ4F81E32RHBREQSE5WAJM
       cost: 136370
       path: contracts/heirloom-vault.clar

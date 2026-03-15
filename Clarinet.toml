@@ -6,12 +6,12 @@ telemetry = true
 cache_dir = "./.cache"
 
 [[project.requirements]]
-contract_id = "ST126WM9ZYGYSNFM2YDV11MS0XMCJ91Q20HPNZY4T.test-sbtc-faucet"
+contract_id = "ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token"
 
 [[project.requirements]]
 contract_id = "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.usdcx"
 
-[contracts.heirloom-vault-v8]
+[contracts.heirloom-vault-v10]
 path = "contracts/heirloom-vault.clar"
 clarity_version = 4
 epoch = "latest"
