@@ -60,20 +60,25 @@ const NavBar = () => {
           </div>
 
           <button
-            className="md:hidden neo-border rounded-lg p-2"
+            className="md:hidden neo-border rounded-lg p-2 transition-all duration-150 active:translate-x-[2px] active:translate-y-[2px]"
             onClick={() => setOpen(!open)}
+            aria-label={open ? "Close menu" : "Open menu"}
           >
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
-        {open && (
-          <div className="md:hidden border-t-4 border-foreground bg-accent-lime p-6 space-y-4">
+        <div
+          className={`md:hidden border-t-4 border-foreground bg-accent-lime overflow-hidden transition-all duration-300 ease-out ${
+            open ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 border-t-0"
+          }`}
+        >
+          <div className="p-6 space-y-4">
             {["How It Works", "Vault Lifecycle", "Why Stacks", "Compare"].map((item) => (
               <a
                 key={item}
                 href={`#${item.toLowerCase().replace(/\s/g, "-")}`}
-                className="block text-xl font-black uppercase neo-border rounded-lg p-4 bg-background text-center"
+                className="block text-xl font-black uppercase neo-border rounded-lg p-4 bg-background text-center transition-all duration-150 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none neo-shadow-sm"
                 onClick={() => setOpen(false)}
               >
                 {item}
@@ -109,7 +114,7 @@ const NavBar = () => {
               </Button>
             )}
           </div>
-        )}
+        </div>
       </nav>
 
       <WalletConnectDialog open={walletDialogOpen} onOpenChange={setWalletDialogOpen} />

@@ -21,8 +21,14 @@ import {
   DollarSign,
   Gift,
   ChevronDown,
-  ChevronUp,
 } from "lucide-react";
+
+const stateColors: Record<string, string> = {
+  active: "bg-accent-lime/20",
+  grace: "bg-accent-yellow/20",
+  claimable: "bg-accent-red/20",
+  distributed: "bg-secondary",
+};
 
 const ClaimPage = () => {
   const { stxAddress, isConnected } = useWallet();
@@ -129,12 +135,15 @@ const ClaimPage = () => {
         <div className="max-w-4xl mx-auto px-6 flex items-center justify-between h-20">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 text-lg font-black hover:underline"
+            className="flex items-center gap-2 text-lg font-black hover:underline group"
           >
-            <ArrowLeft className="h-5 w-5" strokeWidth={3} />
+            <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" strokeWidth={3} />
             Back
           </button>
-          <span className="text-2xl font-black">Claim Inheritance</span>
+          <div className="flex items-center gap-2">
+            <Gift className="h-5 w-5" strokeWidth={3} />
+            <span className="text-2xl font-black">Claim Inheritance</span>
+          </div>
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             {stxAddress
               ? `${stxAddress.slice(0, 6)}...${stxAddress.slice(-4)}`
@@ -143,14 +152,13 @@ const ClaimPage = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+      <div className="max-w-4xl mx-auto px-6 py-12 space-y-8 neo-slide-up">
         {/* Not connected */}
         {!isConnected && (
           <div className="neo-card-static text-center">
-            <AlertTriangle
-              className="h-12 w-12 mx-auto mb-4"
-              strokeWidth={2.5}
-            />
+            <div className="bg-accent-yellow neo-border rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+              <AlertTriangle className="h-10 w-10" strokeWidth={2.5} />
+            </div>
             <h2 className="text-2xl font-black mb-3">Wallet Not Connected</h2>
             <p className="text-muted-foreground font-medium">
               Connect your wallet to check for available inheritances.
@@ -190,16 +198,25 @@ const ClaimPage = () => {
                 <p className="text-muted-foreground font-medium">
                   Scanning vaults on the blockchain
                 </p>
+                {/* Animated search dots */}
+                <div className="flex justify-center gap-2 mt-4">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="w-3 h-3 bg-accent-orange neo-border rounded-full animate-pulse-slow"
+                      style={{ animationDelay: `${i * 0.3}s` }}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
             {/* No results */}
             {searchDone && !searching && inheritances.length === 0 && (
               <div className="neo-card-static text-center">
-                <Gift
-                  className="h-12 w-12 mx-auto mb-4 text-muted-foreground"
-                  strokeWidth={2.5}
-                />
+                <div className="bg-secondary neo-border rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                  <Gift className="h-10 w-10 text-muted-foreground" strokeWidth={2.5} />
+                </div>
                 <h3 className="text-xl font-black mb-2">
                   No Inheritances Found
                 </h3>
@@ -232,13 +249,7 @@ const ClaimPage = () => {
                       {/* Vault header */}
                       <div
                         className={`neo-border-thick rounded-2xl p-6 ${
-                          inh.vaultState === "claimable"
-                            ? "bg-accent-red/20"
-                            : inh.vaultState === "active"
-                            ? "bg-accent-lime/20"
-                            : inh.vaultState === "grace"
-                            ? "bg-accent-yellow/20"
-                            : "bg-secondary"
+                          stateColors[inh.vaultState] || "bg-secondary"
                         }`}
                       >
                         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -269,47 +280,47 @@ const ClaimPage = () => {
                             ? "You have an inheritance available"
                             : "Your Allocation"}
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                          <div>
-                            <p className="text-sm font-bold text-muted-foreground">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                          <div className="neo-border rounded-xl p-4 bg-secondary">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">
                               Share
                             </p>
-                            <p className="text-4xl font-black">
+                            <p className="text-3xl md:text-4xl font-black">
                               {(inh.splitBps / 100).toFixed(0)}%
                             </p>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-muted-foreground">
-                              sBTC Amount
+                          <div className="neo-border rounded-xl p-4 bg-secondary">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                              sBTC
                             </p>
-                            <div className="flex items-center gap-2">
-                              <Bitcoin className="h-6 w-6" />
-                              <p className="text-4xl font-black">
+                            <div className="flex items-center gap-1">
+                              <Bitcoin className="h-5 w-5 shrink-0" />
+                              <p className="text-xl md:text-2xl font-black truncate">
                                 {(inh.sbtcShare / 1e8).toFixed(8)}
                               </p>
                             </div>
                           </div>
                           {inh.usdcxShare > 0 && (
-                            <div>
-                              <p className="text-sm font-bold text-muted-foreground">
-                                USDCx Amount
+                            <div className="neo-border rounded-xl p-4 bg-secondary">
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                                USDCx
                               </p>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-6 w-6" />
-                                <p className="text-4xl font-black">
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="h-5 w-5 shrink-0" />
+                                <p className="text-xl md:text-2xl font-black">
                                   ${(inh.usdcxShare / 1e6).toFixed(2)}
                                 </p>
                               </div>
                             </div>
                           )}
-                          <div>
-                            <p className="text-sm font-bold text-muted-foreground">
-                              Status
+                          <div className="neo-border rounded-xl p-4 bg-secondary">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                              Claim Status
                             </p>
-                            <p className="text-4xl font-black">
+                            <p className="text-xl md:text-2xl font-black">
                               {inh.hasClaimed ? (
-                                <span className="text-accent-lime">
-                                  Claimed
+                                <span className="text-accent-lime flex items-center gap-1">
+                                  <CheckCircle className="h-5 w-5" /> Claimed
                                 </span>
                               ) : (
                                 <span className="text-foreground">Pending</span>
@@ -323,10 +334,9 @@ const ClaimPage = () => {
                       <div className="pt-4 border-t-4 border-foreground">
                         {txId ? (
                           <div className="text-center">
-                            <CheckCircle
-                              className="h-8 w-8 mx-auto mb-2 text-accent-lime"
-                              strokeWidth={2.5}
-                            />
+                            <div className="bg-accent-lime neo-border rounded-full p-3 w-14 h-14 mx-auto mb-3 flex items-center justify-center">
+                              <CheckCircle className="h-7 w-7" strokeWidth={2.5} />
+                            </div>
                             <p className="font-black mb-2">Claim Submitted!</p>
                             <a
                               href={explorerTxUrl(txId)}
@@ -342,7 +352,7 @@ const ClaimPage = () => {
                           <Button
                             variant="lime"
                             size="xl"
-                            className="w-full"
+                            className={`w-full ${canClaim ? "neo-glow-lime" : ""}`}
                             onClick={() => handleClaim(inh.ownerAddress)}
                             disabled={!canClaim || isClaiming}
                           >
@@ -377,28 +387,26 @@ const ClaimPage = () => {
               <div className="neo-card-static">
                 <button
                   onClick={() => setShowManual(!showManual)}
-                  className="flex items-center justify-between w-full"
+                  className="flex items-center justify-between w-full group"
                 >
-                  <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                  <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
                     {inheritances.length > 0
                       ? "Look up another vault"
                       : "Manual vault lookup"}
                   </span>
-                  {showManual ? (
-                    <ChevronUp className="h-5 w-5" />
-                  ) : (
+                  <div className={`transition-transform duration-200 ${showManual ? "rotate-180" : ""}`}>
                     <ChevronDown className="h-5 w-5" />
-                  )}
+                  </div>
                 </button>
-                {showManual && (
-                  <div className="mt-4 space-y-3">
+                <div className={`overflow-hidden transition-all duration-300 ease-out ${showManual ? "max-h-40 opacity-100 mt-4" : "max-h-0 opacity-0"}`}>
+                  <div className="space-y-3">
                     <div className="flex gap-3">
                       <input
                         type="text"
                         value={manualAddress}
                         onChange={(e) => setManualAddress(e.target.value)}
                         maxLength={128}
-                        className="flex-1 neo-border rounded-lg px-4 py-3 bg-background font-medium text-sm font-mono neo-shadow-sm focus:bg-accent-orange/20 focus:outline-none transition-colors"
+                        className="neo-input flex-1 font-mono text-sm focus:bg-accent-orange/20"
                         placeholder="Enter vault owner address (SP... or ST...)"
                       />
                       <Button
@@ -416,13 +424,13 @@ const ClaimPage = () => {
                       </Button>
                     </div>
                     {manualError && (
-                      <div className="flex items-center gap-2 text-sm font-bold text-accent-red">
+                      <div className="flex items-center gap-2 text-sm font-bold text-accent-red neo-shake">
                         <AlertTriangle className="h-4 w-4" />
                         {manualError}
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             )}
           </>

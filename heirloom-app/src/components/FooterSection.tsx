@@ -7,7 +7,7 @@ const FooterSection = () => {
           <div>
             <h3 className="text-4xl md:text-5xl font-black mb-4">Heirloom</h3>
             <p className="text-lg font-medium opacity-80 leading-relaxed">
-              Bitcoin-heartbeat inheritance vault built on Stacks. 
+              Bitcoin-heartbeat inheritance vault built on Stacks.
               Your Bitcoin doesn't die with you.
             </p>
           </div>
@@ -47,7 +47,7 @@ const FooterSection = () => {
             Heirloom is not a legal will. It is programmable self-custody continuity.
           </p>
           <p className="text-sm font-bold uppercase tracking-widest opacity-60">
-            Built on Stacks · Secured by Bitcoin
+            Built on Stacks -- Secured by Bitcoin
           </p>
         </div>
       </div>

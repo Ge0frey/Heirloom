@@ -9,9 +9,9 @@ const solutions = [
 ];
 
 const Cell = ({ value }: { value: boolean | string }) => {
-  if (value === true) return <Check className="h-7 w-7 mx-auto" strokeWidth={3} />;
-  if (value === false) return <X className="h-7 w-7 mx-auto text-muted-foreground" strokeWidth={3} />;
-  return <span className="text-sm font-bold uppercase">Partial</span>;
+  if (value === true) return <Check className="h-7 w-7 mx-auto text-foreground" strokeWidth={3} />;
+  if (value === false) return <X className="h-7 w-7 mx-auto text-muted-foreground/40" strokeWidth={3} />;
+  return <span className="text-sm font-bold uppercase text-muted-foreground">Partial</span>;
 };
 
 const ComparisonSection = () => {
@@ -28,24 +28,39 @@ const ComparisonSection = () => {
           </h2>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-2 px-2">
           <table className="w-full neo-border-thick rounded-2xl overflow-hidden neo-shadow-lg">
             <thead>
               <tr className="bg-foreground text-background">
                 <th className="text-left p-4 md:p-6 text-lg font-black uppercase tracking-wide border-r-4 border-background">Solution</th>
-                <th className="p-4 md:p-6 text-lg font-black uppercase tracking-wide border-r-4 border-background">Self-Custodial</th>
-                <th className="p-4 md:p-6 text-lg font-black uppercase tracking-wide border-r-4 border-background">Trustless</th>
-                <th className="p-4 md:p-6 text-lg font-black uppercase tracking-wide">BTC-Native</th>
+                <th className="p-4 md:p-6 text-lg font-black uppercase tracking-wide border-r-4 border-background text-center">Self-Custodial</th>
+                <th className="p-4 md:p-6 text-lg font-black uppercase tracking-wide border-r-4 border-background text-center">Trustless</th>
+                <th className="p-4 md:p-6 text-lg font-black uppercase tracking-wide text-center">BTC-Native</th>
               </tr>
             </thead>
             <tbody>
               {solutions.map((s, i) => (
                 <tr
                   key={s.name}
-                  className={`${s.highlight ? "bg-accent-lime font-black" : i % 2 === 0 ? "bg-background" : "bg-secondary"} border-t-4 border-foreground`}
+                  className={`${
+                    s.highlight
+                      ? "bg-accent-lime font-black"
+                      : i % 2 === 0
+                      ? "bg-background"
+                      : "bg-secondary"
+                  } border-t-4 border-foreground transition-colors duration-150 ${
+                    !s.highlight ? "hover:bg-secondary/80" : ""
+                  }`}
                 >
                   <td className="p-4 md:p-6 text-lg font-bold border-r-4 border-foreground">
-                    {s.highlight && "⚡ "}{s.name}
+                    {s.highlight ? (
+                      <span className="flex items-center gap-2">
+                        <span className="bg-foreground text-accent-lime rounded-md px-2 py-0.5 text-xs font-black uppercase tracking-wider">Best</span>
+                        {s.name}
+                      </span>
+                    ) : (
+                      s.name
+                    )}
                   </td>
                   <td className="p-4 md:p-6 text-center border-r-4 border-foreground">
                     <Cell value={s.selfCustodial} />

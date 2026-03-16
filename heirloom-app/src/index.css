@@ -65,12 +65,82 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground font-body;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-display;
+  }
+
+  ::selection {
+    background-color: hsl(var(--accent-lime));
+    color: hsl(var(--foreground));
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--secondary));
+    border-left: 4px solid hsl(var(--foreground));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--foreground));
+    border: 2px solid hsl(var(--secondary));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Custom range slider */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 12px;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--foreground));
+    border: 4px solid hsl(var(--background));
+    box-shadow: var(--shadow-sm);
+    cursor: grab;
+    transition: transform 0.15s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+  input[type="range"]::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: hsl(var(--foreground));
+    border: 4px solid hsl(var(--background));
+    box-shadow: var(--shadow-sm);
+    cursor: grab;
+  }
+
+  /* Focus-visible for keyboard accessibility */
+  input:focus-visible,
+  button:focus-visible {
+    outline: 4px solid hsl(var(--foreground));
+    outline-offset: 2px;
   }
 }
 
@@ -94,7 +164,7 @@
     @apply border-[6px] border-foreground;
   }
   .neo-card {
-    @apply bg-card neo-border rounded-2xl p-8;
+    @apply bg-card neo-border rounded-2xl p-8 transition-all duration-150 ease-out;
     box-shadow: var(--shadow-lg);
   }
   .neo-card:hover {
@@ -126,5 +196,71 @@
   }
   .neo-section-purple {
     background-color: hsl(var(--accent-purple));
+  }
+
+  /* Input styling */
+  .neo-input {
+    @apply w-full neo-border rounded-lg px-4 py-3 bg-background font-bold text-base transition-all duration-150;
+    box-shadow: var(--shadow-sm);
+  }
+  .neo-input:focus {
+    box-shadow: var(--shadow-md);
+    transform: translate(-2px, -2px);
+    outline: none;
+  }
+
+  /* Countdown digit styling */
+  .neo-digit {
+    @apply bg-secondary neo-border rounded-xl py-4 px-2 relative overflow-hidden transition-all duration-300;
+    box-shadow: var(--shadow-sm);
+  }
+  .neo-digit::after {
+    content: '';
+    @apply absolute left-0 right-0 h-[2px] bg-foreground/10;
+    top: 50%;
+  }
+
+  /* Step indicator */
+  .neo-step-dot {
+    @apply w-10 h-10 md:w-12 md:h-12 neo-border rounded-full flex items-center justify-center font-black text-sm md:text-base transition-all duration-300;
+  }
+  .neo-step-dot.active {
+    @apply bg-accent-lime scale-110;
+    box-shadow: var(--shadow-md);
+  }
+  .neo-step-dot.complete {
+    @apply bg-accent-lime;
+  }
+  .neo-step-dot.pending {
+    @apply bg-secondary;
+  }
+
+  /* Slide-in animation for page transitions */
+  .neo-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Shake animation for errors */
+  .neo-shake {
+    animation: shake 0.4s ease-out;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); }
+    75% { transform: translateX(-4px); }
+  }
+
+  /* Glow pulse for important elements */
+  .neo-glow-lime {
+    animation: glowLime 2s ease-in-out infinite;
+  }
+  @keyframes glowLime {
+    0%, 100% { box-shadow: var(--shadow-md); }
+    50% { box-shadow: var(--shadow-lg), 0 0 20px hsl(var(--accent-lime) / 0.3); }
   }
 }

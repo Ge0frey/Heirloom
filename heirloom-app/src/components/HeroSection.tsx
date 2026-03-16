@@ -29,7 +29,7 @@ const HeroSection = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
+            <div className="neo-slide-up">
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight mb-6">
                 If your Bitcoin goes{" "}
                 <span className="bg-accent-pink px-3 inline-block rotate-[-1deg]">
@@ -55,8 +55,8 @@ const HeroSection = () => {
               </div>
             </div>
 
-            <div className="relative flex justify-center lg:justify-end">
-              <div className="neo-card-static rotate-[2deg] max-w-md w-full">
+            <div className="relative flex justify-center lg:justify-end neo-slide-up" style={{ animationDelay: '0.15s' }}>
+              <div className="neo-card-static rotate-[2deg] max-w-md w-full hover:rotate-[0deg] transition-transform duration-300">
                 <img
                   src={heroVault}
                   alt="Heirloom Bitcoin Vault with heartbeat pulse"
@@ -64,7 +64,7 @@ const HeroSection = () => {
                 />
               </div>
               <div className="absolute -top-4 -right-2 neo-badge bg-accent-yellow rotate-[12deg] animate-float text-xs">
-                ₿ Secured
+                Secured
               </div>
               <div className="absolute -bottom-4 left-4 neo-badge bg-accent-cyan rotate-[-6deg] text-xs">
                 On Stacks

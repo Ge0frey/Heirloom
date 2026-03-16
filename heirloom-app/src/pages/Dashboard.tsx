@@ -17,13 +17,15 @@ import {
   ArrowLeft,
   Loader2,
   ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 
-const statusColors: Record<string, string> = {
-  active: "neo-section-lime",
-  grace: "bg-accent-yellow",
-  claimable: "bg-accent-red",
-  distributed: "bg-secondary",
+const statusConfig: Record<string, { bg: string; label: string; description: string }> = {
+  active: { bg: "neo-section-lime", label: "Active", description: "Heartbeat timer is running. All good." },
+  grace: { bg: "bg-accent-yellow", label: "Grace Period", description: "Heartbeat missed. Send one before the grace period expires!" },
+  claimable: { bg: "bg-accent-red", label: "Claimable", description: "Grace period expired. Heirs can now claim their shares." },
+  distributed: { bg: "bg-secondary", label: "Distributed", description: "All assets have been distributed to heirs." },
 };
 
 const DashboardPage = () => {
@@ -35,16 +37,19 @@ const DashboardPage = () => {
   const [withdrawing, setWithdrawing] = useState(false);
   const [lastTxId, setLastTxId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [computedState, setComputedState] = useState<"active" | "grace" | "claimable" | "distributed">("active");
+  const [countdownLabel, setCountdownLabel] = useState("Next Heartbeat Due In");
+  const [copied, setCopied] = useState(false);
 
-  // Local countdown timer based on wall-clock time and vault's absolute timestamps.
-  // Only restarts when lastHeartbeat actually changes (i.e. a real heartbeat was sent),
-  // not on every poll cycle.
+  // Local countdown timer and state computed from wall-clock time.
   useEffect(() => {
     if (!vault) return;
 
-    const updateCountdown = () => {
+    const tick = () => {
       if (vault.isDistributed) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setComputedState("distributed");
+        setCountdownLabel("Vault Distributed");
         return;
       }
 
@@ -54,12 +59,18 @@ const DashboardPage = () => {
       const claimableDeadline = graceDeadline + vault.gracePeriod + pauseBonus;
 
       let remaining: number;
-      if (now < graceDeadline) {
-        remaining = graceDeadline - now;
-      } else if (now < claimableDeadline) {
-        remaining = claimableDeadline - now;
-      } else {
+      if (now >= claimableDeadline) {
         remaining = 0;
+        setComputedState("claimable");
+        setCountdownLabel("Vault Is Claimable");
+      } else if (now >= graceDeadline) {
+        remaining = claimableDeadline - now;
+        setComputedState("grace");
+        setCountdownLabel("Time Until Claimable");
+      } else {
+        remaining = graceDeadline - now;
+        setComputedState("active");
+        setCountdownLabel("Next Heartbeat Due In");
       }
 
       remaining = Math.max(0, remaining);
@@ -71,8 +82,8 @@ const DashboardPage = () => {
       });
     };
 
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
+    tick();
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [vault?.lastHeartbeat, vault?.heartbeatInterval, vault?.gracePeriod, vault?.isDistributed, vault?.guardianPauseUsed]);
 
@@ -111,10 +122,18 @@ const DashboardPage = () => {
     navigate("/");
   };
 
+  const handleCopyAddress = () => {
+    if (stxAddress) {
+      navigator.clipboard.writeText(stxAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   if (loading && !vault && !pendingCreate) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="neo-card-static text-center max-w-md">
+        <div className="neo-card-static text-center max-w-md neo-slide-up">
           <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" strokeWidth={2.5} />
           <h2 className="text-2xl font-black mb-3">Loading Vault...</h2>
           <p className="text-muted-foreground font-medium">Fetching on-chain data</p>
@@ -126,7 +145,7 @@ const DashboardPage = () => {
   if (!vault && pendingCreate) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="neo-card-static text-center max-w-md">
+        <div className="neo-card-static text-center max-w-md neo-slide-up">
           <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" strokeWidth={2.5} />
           <h2 className="text-2xl font-black mb-3">Vault Creation Pending</h2>
           <p className="text-muted-foreground font-medium mb-6">
@@ -150,8 +169,10 @@ const DashboardPage = () => {
   if (!vault) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="neo-card-static text-center max-w-md">
-          <AlertTriangle className="h-12 w-12 mx-auto mb-4" strokeWidth={2.5} />
+        <div className="neo-card-static text-center max-w-md neo-slide-up">
+          <div className="bg-accent-yellow neo-border rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+            <AlertTriangle className="h-10 w-10" strokeWidth={2.5} />
+          </div>
           <h2 className="text-2xl font-black mb-3">No Vault Found</h2>
           <p className="text-muted-foreground font-medium mb-6">Create a vault first to see your dashboard.</p>
           <Button variant="lime" onClick={() => navigate("/create-vault")}>
@@ -170,25 +191,15 @@ const DashboardPage = () => {
 
   const sbtcDisplay = (vault.sbtcBalance / 1e8).toFixed(8);
   const usdcxDisplay = (vault.usdcxBalance / 1e6).toFixed(2);
-  // Compute countdown label from wall-clock time so it stays in sync with the local countdown
-  const countdownLabel = (() => {
-    if (vault.isDistributed) return "Vault Distributed";
-    const now = Math.floor(Date.now() / 1000);
-    const graceDeadline = vault.lastHeartbeat + vault.heartbeatInterval;
-    const pauseBonus = vault.guardianPauseUsed ? 2592000 : 0;
-    const claimableDeadline = graceDeadline + vault.gracePeriod + pauseBonus;
-    if (now >= claimableDeadline) return "Vault Is Claimable";
-    if (now >= graceDeadline) return "Time Until Claimable";
-    return "Next Heartbeat Due In";
-  })();
+  const config = statusConfig[computedState] || statusConfig.active;
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b-8 border-foreground bg-background sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-20">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-lg font-black hover:underline">
-            <ArrowLeft className="h-5 w-5" strokeWidth={3} />
+          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-lg font-black hover:underline group">
+            <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" strokeWidth={3} />
             Home
           </button>
           <span className="text-2xl font-black">Vault Dashboard</span>
@@ -197,29 +208,34 @@ const DashboardPage = () => {
             className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest hover:underline"
           >
             <LogOut className="h-4 w-4" strokeWidth={2.5} />
-            Disconnect
+            <span className="hidden sm:inline">Disconnect</span>
           </button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-12 space-y-8">
+      <div className="max-w-6xl mx-auto px-6 py-12 space-y-8 neo-slide-up">
         {/* Status banner */}
-        <div className={`${statusColors[vault.state] || "bg-secondary"} neo-border-thick rounded-2xl p-8 neo-shadow-xl`}>
+        <div className={`${config.bg} neo-border-thick rounded-2xl p-8 neo-shadow-xl`}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
               <span className="neo-badge bg-background mb-3 inline-block">Vault Status</span>
-              <h2 className="text-4xl md:text-5xl font-black uppercase">{vault.state}</h2>
-              <p className="text-sm font-bold text-foreground/70 mt-1 font-mono">
-                Owner: {stxAddress}
-              </p>
+              <h2 className="text-4xl md:text-5xl font-black uppercase">{config.label}</h2>
+              <p className="text-sm font-bold text-foreground/60 mt-1">{config.description}</p>
+              <button
+                onClick={handleCopyAddress}
+                className="text-xs font-bold text-foreground/50 mt-2 font-mono flex items-center gap-1 hover:text-foreground/80 transition-colors"
+              >
+                {stxAddress}
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </button>
             </div>
-            {vault.state !== "distributed" && (
+            {computedState !== "distributed" && (
               <Button
                 variant="default"
                 size="xl"
                 onClick={handleHeartbeat}
                 disabled={sendingHeartbeat}
-                className="shrink-0"
+                className={`shrink-0 ${computedState === "grace" ? "neo-shake" : ""}`}
               >
                 {sendingHeartbeat ? (
                   <><Loader2 className="h-5 w-5 animate-spin" /> Signing...</>
@@ -233,7 +249,7 @@ const DashboardPage = () => {
 
         {/* Last tx link */}
         {(lastTxId || pendingTxId) && (
-          <div className="neo-card-static bg-accent-cyan/10">
+          <div className="neo-card-static bg-accent-cyan/10 !p-5">
             <a
               href={explorerTxUrl(lastTxId || pendingTxId || "")}
               target="_blank"
@@ -248,10 +264,13 @@ const DashboardPage = () => {
 
         {/* Countdown */}
         <div className="neo-card-static">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
-            {countdownLabel}
-          </h3>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              {countdownLabel}
+            </h3>
+            <Clock className="h-5 w-5 text-muted-foreground" strokeWidth={2.5} />
+          </div>
+          <div className="grid grid-cols-4 gap-3 md:gap-4">
             {[
               { label: "Days", value: countdown.days },
               { label: "Hours", value: countdown.hours },
@@ -259,8 +278,8 @@ const DashboardPage = () => {
               { label: "Sec", value: countdown.seconds },
             ].map((unit) => (
               <div key={unit.label} className="text-center">
-                <div className="bg-secondary neo-border rounded-xl py-4 px-2 neo-shadow-sm">
-                  <span className="text-4xl md:text-6xl font-black">{String(unit.value).padStart(2, "0")}</span>
+                <div className="neo-digit">
+                  <span className="text-4xl md:text-6xl font-black tabular-nums">{String(unit.value).padStart(2, "0")}</span>
                 </div>
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-2">
                   {unit.label}
@@ -268,43 +287,48 @@ const DashboardPage = () => {
               </div>
             ))}
           </div>
-          <p className="text-sm font-bold text-muted-foreground mt-4">
-            Last heartbeat: {vault.lastHeartbeat > 0 ? new Date(vault.lastHeartbeat * 1000).toLocaleString() : "N/A"}
-          </p>
+          <div className="flex items-center justify-between mt-4 pt-4 border-t-2 border-foreground/10">
+            <p className="text-sm font-bold text-muted-foreground">
+              Last heartbeat: {vault.lastHeartbeat > 0 ? new Date(vault.lastHeartbeat * 1000).toLocaleString() : "N/A"}
+            </p>
+            {computedState === "grace" && (
+              <span className="neo-badge bg-accent-yellow text-xs animate-pulse-slow">Urgent</span>
+            )}
+          </div>
         </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="neo-card-static">
+          <div className="neo-card-static group hover:translate-y-[-2px] transition-transform duration-150">
             <div className="flex items-center gap-3 mb-4">
-              <div className="bg-accent-orange neo-border rounded-xl p-3">
+              <div className="bg-accent-orange neo-border rounded-xl p-3 transition-transform group-hover:rotate-[-4deg]">
                 <Bitcoin className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <h3 className="font-black">sBTC Locked</h3>
             </div>
-            <p className="text-4xl font-black">{sbtcDisplay}</p>
-            <p className="text-sm font-bold text-muted-foreground">{vault.sbtcBalance} sats</p>
+            <p className="text-3xl md:text-4xl font-black tabular-nums">{sbtcDisplay}</p>
+            <p className="text-sm font-bold text-muted-foreground">{vault.sbtcBalance.toLocaleString()} sats</p>
           </div>
 
-          <div className="neo-card-static">
+          <div className="neo-card-static group hover:translate-y-[-2px] transition-transform duration-150">
             <div className="flex items-center gap-3 mb-4">
-              <div className="bg-accent-cyan neo-border rounded-xl p-3">
+              <div className="bg-accent-cyan neo-border rounded-xl p-3 transition-transform group-hover:rotate-[-4deg]">
                 <DollarSign className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <h3 className="font-black">USDCx Locked</h3>
             </div>
-            <p className="text-4xl font-black">${usdcxDisplay}</p>
-            <p className="text-sm font-bold text-muted-foreground">{vault.usdcxBalance} micro-units</p>
+            <p className="text-3xl md:text-4xl font-black tabular-nums">${usdcxDisplay}</p>
+            <p className="text-sm font-bold text-muted-foreground">{vault.usdcxBalance.toLocaleString()} micro-units</p>
           </div>
 
-          <div className="neo-card-static">
+          <div className="neo-card-static group hover:translate-y-[-2px] transition-transform duration-150">
             <div className="flex items-center gap-3 mb-4">
-              <div className="bg-accent-pink neo-border rounded-xl p-3">
+              <div className="bg-accent-pink neo-border rounded-xl p-3 transition-transform group-hover:rotate-[-4deg]">
                 <Clock className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <h3 className="font-black">Parameters</h3>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm font-bold">Interval</span>
                 <span className="font-black">{vault.heartbeatInterval >= 86400 ? `${Math.round(vault.heartbeatInterval / 86400)}d` : `${vault.heartbeatInterval}s`}</span>
@@ -313,7 +337,7 @@ const DashboardPage = () => {
                 <span className="text-sm font-bold">Grace</span>
                 <span className="font-black">{vault.gracePeriod >= 86400 ? `${Math.round(vault.gracePeriod / 86400)}d` : `${vault.gracePeriod}s`}</span>
               </div>
-              <div className="flex justify-between border-t-4 border-foreground pt-1 mt-1">
+              <div className="flex justify-between border-t-4 border-foreground pt-2 mt-2">
                 <span className="text-sm font-bold">Total</span>
                 <span className="font-black">{(vault.heartbeatInterval + vault.gracePeriod) >= 86400 ? `${Math.round((vault.heartbeatInterval + vault.gracePeriod) / 86400)}d` : `${vault.heartbeatInterval + vault.gracePeriod}s`}</span>
               </div>
@@ -323,20 +347,28 @@ const DashboardPage = () => {
 
         {/* Heirs */}
         <div className="neo-card-static">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-accent-yellow neo-border rounded-xl p-3">
-              <Users className="h-6 w-6" strokeWidth={2.5} />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-accent-yellow neo-border rounded-xl p-3">
+                <Users className="h-6 w-6" strokeWidth={2.5} />
+              </div>
+              <h3 className="text-xl font-black">Heirs ({vault.heirs.length})</h3>
             </div>
-            <h3 className="text-xl font-black">Heirs ({vault.heirs.length})</h3>
+            <span className="neo-badge bg-secondary text-xs">{vault.heirs.filter(h => h.hasClaimed).length} claimed</span>
           </div>
           <div className="space-y-3">
             {vault.heirs.map((h, i) => (
-              <div key={i} className="flex items-center justify-between neo-border rounded-lg p-4 bg-secondary">
-                <div>
-                  <p className="font-black text-lg">{h.label}</p>
-                  <p className="text-xs font-mono text-muted-foreground">
-                    {h.address.slice(0, 12)}...{h.address.slice(-6)}
-                  </p>
+              <div key={i} className="flex items-center justify-between neo-border rounded-lg p-4 bg-secondary hover:bg-secondary/70 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="bg-foreground text-background neo-border rounded-full w-8 h-8 flex items-center justify-center text-sm font-black shrink-0">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <p className="font-black text-lg">{h.label}</p>
+                    <p className="text-xs font-mono text-muted-foreground">
+                      {h.address.slice(0, 12)}...{h.address.slice(-6)}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="font-black text-2xl">{(h.splitBps / 100).toFixed(0)}%</p>
@@ -361,7 +393,9 @@ const DashboardPage = () => {
         {vault.guardian && (
           <div className="neo-card-static bg-accent-purple/10">
             <div className="flex items-center gap-3">
-              <Shield className="h-6 w-6" strokeWidth={2.5} />
+              <div className="bg-accent-purple neo-border rounded-xl p-3">
+                <Shield className="h-6 w-6 text-white" strokeWidth={2.5} />
+              </div>
               <div>
                 <p className="font-black">Guardian {vault.guardianPauseUsed ? "(Pause Used)" : "Active"}</p>
                 <p className="text-sm font-mono text-muted-foreground">{vault.guardian}</p>
@@ -371,14 +405,19 @@ const DashboardPage = () => {
         )}
 
         {/* Emergency */}
-        {vault.state !== "distributed" && (
+        {computedState !== "distributed" && (
           <div className="neo-card-static border-accent-red">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="font-black text-lg">Emergency Withdraw</h3>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Reclaim all assets and cancel the vault permanently.
-                </p>
+              <div className="flex items-start gap-3">
+                <div className="bg-accent-red/20 neo-border rounded-xl p-3 shrink-0">
+                  <AlertTriangle className="h-6 w-6" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Emergency Withdraw</h3>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Reclaim all assets and cancel the vault permanently.
+                  </p>
+                </div>
               </div>
               <Button
                 variant="destructive"

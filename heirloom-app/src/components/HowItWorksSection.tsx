@@ -52,8 +52,13 @@ const HowItWorksSection = () => {
                             className={`neo-card ${step.rotate} transition-all duration-150`}
                         >
                             <div className="flex items-start gap-6">
-                                <div className={`${step.color} neo-border rounded-2xl p-4 shrink-0`}>
-                                    <step.icon className="h-8 w-8" strokeWidth={2.5} />
+                                <div className="relative shrink-0">
+                                    <div className={`${step.color} neo-border rounded-2xl p-4`}>
+                                        <step.icon className="h-8 w-8" strokeWidth={2.5} />
+                                    </div>
+                                    <span className="absolute -top-3 -left-3 bg-foreground text-background neo-border rounded-full w-8 h-8 flex items-center justify-center text-sm font-black">
+                                        {i + 1}
+                                    </span>
                                 </div>
                                 <div>
                                     <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">

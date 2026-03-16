@@ -7,6 +7,7 @@ const reasons = [
     description: "Accurate on-chain timestamps for heartbeat intervals and expiry calculations.",
     badge: "NEW",
     badgeColor: "bg-accent-lime",
+    rotate: "rotate-[-1deg]",
   },
   {
     icon: Lock,
@@ -14,6 +15,7 @@ const reasons = [
     description: "In-contract post-conditions ensure transfers are exactly what was specified.",
     badge: "SAFE",
     badgeColor: "bg-accent-cyan",
+    rotate: "rotate-[1deg]",
   },
   {
     icon: Bitcoin,
@@ -21,6 +23,7 @@ const reasons = [
     description: "Real Bitcoin-backed value. $545M+ TVL. Inheritance of sBTC = inheritance of Bitcoin.",
     badge: "BTC",
     badgeColor: "bg-accent-yellow",
+    rotate: "rotate-[-0.5deg]",
   },
   {
     icon: Layers,
@@ -28,6 +31,7 @@ const reasons = [
     description: "Standard fungible token interface for composable, programmable inheritance.",
     badge: "SIP-010",
     badgeColor: "bg-accent-pink",
+    rotate: "rotate-[1.5deg]",
   },
   {
     icon: Shield,
@@ -35,6 +39,7 @@ const reasons = [
     description: "Every claim is as irreversible as a Bitcoin transaction. Finality = certainty.",
     badge: "FINAL",
     badgeColor: "bg-accent-orange",
+    rotate: "rotate-[-1.5deg]",
   },
   {
     icon: FileCode,
@@ -42,6 +47,7 @@ const reasons = [
     description: "Interpreted, decidable, no reentrancy. What you see is what executes.",
     badge: "AUDITABLE",
     badgeColor: "bg-accent-purple",
+    rotate: "rotate-[0.5deg]",
   },
 ];
 
@@ -61,13 +67,13 @@ const WhyStacksSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {reasons.map((r) => (
-            <div key={r.title} className="neo-card relative">
+            <div key={r.title} className={`neo-card relative ${r.rotate}`}>
               {/* Badge sticker */}
               <span className={`absolute -top-3 -right-3 neo-badge ${r.badgeColor} rotate-[6deg] text-xs`}>
                 {r.badge}
               </span>
-              <div className="mb-4">
-                <r.icon className="h-10 w-10" strokeWidth={2.5} />
+              <div className={`${r.badgeColor} neo-border rounded-xl p-3 inline-block mb-4`}>
+                <r.icon className="h-8 w-8" strokeWidth={2.5} />
               </div>
               <h3 className="text-xl font-black mb-2">{r.title}</h3>
               <p className="text-base font-medium leading-relaxed">{r.description}</p>
