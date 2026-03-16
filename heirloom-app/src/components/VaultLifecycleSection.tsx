@@ -12,7 +12,7 @@ const VaultLifecycleSection = () => {
   return (
     <section className="py-16 px-6 md:py-24 lg:py-32">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-16">
+        <div className="mb-16 text-center">
           <span className="neo-badge bg-accent-orange mb-6 inline-block">Vault Lifecycle</span>
           <h2 className="text-4xl md:text-6xl font-black leading-[0.9]">
             From heartbeat to{" "}
