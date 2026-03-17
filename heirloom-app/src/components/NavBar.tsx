@@ -49,16 +49,16 @@ const NavBar = () => {
               <>
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className="flex items-center gap-2 text-sm font-bold hover:bg-secondary rounded-lg px-3 py-2 transition-colors"
+                  className="flex items-center gap-2 text-sm font-black uppercase tracking-wide hover:bg-secondary rounded-lg px-4 py-2 transition-colors"
                 >
-                  <LayoutDashboard className="h-4 w-4" />
+                  <LayoutDashboard className="h-5 w-5" />
                   Dashboard
                 </button>
                 <button
                   onClick={() => navigate("/claim")}
-                  className="flex items-center gap-2 text-sm font-bold hover:bg-secondary rounded-lg px-3 py-2 transition-colors"
+                  className="flex items-center gap-2 text-sm font-black uppercase tracking-wide hover:bg-secondary rounded-lg px-4 py-2 transition-colors"
                 >
-                  <Gift className="h-4 w-4" />
+                  <Gift className="h-5 w-5" />
                   Claim Inheritance
                 </button>
                 <div className="relative" ref={dropdownRef}>
