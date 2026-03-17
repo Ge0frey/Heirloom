@@ -36,9 +36,25 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const connectWallet = useCallback(async () => {
     try {
       const response = await connect();
-      const addr = response.addresses.stx?.[0]?.address || null;
-      setStxAddress(addr);
-      setIsConnected(true);
+      // Try reading address from connect() response first
+      let addr: string | null = null;
+      if (response?.addresses?.stx?.[0]?.address) {
+        addr = response.addresses.stx[0].address;
+      } else if (Array.isArray(response?.addresses)) {
+        const stxEntry = response.addresses.find(
+          (a: { type?: string; symbol?: string }) => a.type === "stx" || a.symbol === "STX"
+        );
+        addr = stxEntry?.address || null;
+      }
+      // Fallback: read from localStorage (always works after connect)
+      if (!addr) {
+        const data = getLocalStorage();
+        addr = data?.addresses?.stx?.[0]?.address || null;
+      }
+      if (addr) {
+        setStxAddress(addr);
+        setIsConnected(true);
+      }
     } catch (error) {
       console.error("Wallet connection failed:", error);
     }
