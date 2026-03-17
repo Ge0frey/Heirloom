@@ -31,13 +31,13 @@ const HeroSection = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="neo-slide-up">
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight mb-6">
-                If your Bitcoin goes{" "}
+                Protect your{" "}
                 <span className="bg-accent-pink px-3 inline-block rotate-[-1deg]">
-                  silent,
+                  Bitcoin.
                 </span>{" "}
-                your plan{" "}
+                Pass it on{" "}
                 <span className="bg-accent-lime px-3 inline-block rotate-[1deg]">
-                  speaks.
+                  trustlessly.
                 </span>
               </h1>
               <p className="text-xl md:text-2xl font-medium leading-relaxed mb-10 max-w-xl">
