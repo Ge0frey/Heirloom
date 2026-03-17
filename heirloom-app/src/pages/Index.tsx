@@ -4,6 +4,7 @@ import HowItWorksSection from "@/components/HowItWorksSection";
 import VaultLifecycleSection from "@/components/VaultLifecycleSection";
 import WhyStacksSection from "@/components/WhyStacksSection";
 import ComparisonSection from "@/components/ComparisonSection";
+import FAQSection from "@/components/FAQSection";
 import CTASection from "@/components/CTASection";
 import FooterSection from "@/components/FooterSection";
 
@@ -23,6 +24,9 @@ const Index = () => {
       </div>
       <div id="compare">
         <ComparisonSection />
+      </div>
+      <div id="faq">
+        <FAQSection />
       </div>
       <CTASection />
       <FooterSection />
