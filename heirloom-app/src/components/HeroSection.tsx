@@ -50,12 +50,12 @@ const HeroSection = () => {
                   {isConnected ? "Create Vault" : "Launch App"}
                 </Button>
                 <a
-                  href="https://docs.heirloom.cash/introduction"
+                  href="https://ge0frey-heirloom-61.mintlify.app/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <Button variant="outline" size="xl">
-                    Read Docs
+                    Read the docs
                   </Button>
                 </a>
               </div>
