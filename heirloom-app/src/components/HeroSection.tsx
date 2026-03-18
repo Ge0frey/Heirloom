@@ -49,9 +49,15 @@ const HeroSection = () => {
                 <Button variant="lime" size="xl" onClick={handleLaunch}>
                   {isConnected ? "Create Vault" : "Launch App"}
                 </Button>
-                <Button variant="outline" size="xl">
-                  Read Docs
-                </Button>
+                <a
+                  href="https://docs.heirloom.cash/introduction"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" size="xl">
+                    Read Docs
+                  </Button>
+                </a>
               </div>
             </div>
 
