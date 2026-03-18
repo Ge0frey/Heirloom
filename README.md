@@ -1,8 +1,16 @@
-# Heirloom -- The Bitcoin-Heartbeat Inheritance Vault
+# Heirloom - The Bitcoin-Heartbeat Inheritance Vault
 
 **"If your Bitcoin goes silent, your plan speaks."**
 
 Heirloom is a Bitcoin-native inheritance protocol built on Stacks. Vault owners lock sBTC and USDCx into a Clarity smart contract, designate heirs with percentage splits, and maintain a periodic heartbeat signal from their wallet. If the heartbeat stops -- due to incapacitation, death, or any other reason -- the vault enters a grace period and eventually becomes claimable by the designated beneficiaries. No lawyers, no custodians, no seed phrase sharing.
+
+---
+
+## Quick links
+
+### YouTube Demo - https://youtu.be/1TJpk-cW_sU
+### Docs - https://ge0frey-heirloom-61.mintlify.app/introduction
+### Live link - https://heirloomapp.vercel.app/
 
 ---
 
